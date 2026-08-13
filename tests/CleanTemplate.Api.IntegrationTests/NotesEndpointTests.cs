@@ -8,6 +8,7 @@ public class NotesEndpointTests(WebAppFactory factory)
     [Fact]
     public async Task Crud_RoundTrip_Succeeds()
     {
+        factory.ResetDatabase();
         var client = factory.CreateClient();
 
         var createResponse = await client.PostAsJsonAsync("/notes", new CreateNoteRequest("groceries", "milk"));
@@ -23,7 +24,7 @@ public class NotesEndpointTests(WebAppFactory factory)
 
         var listed = await client.GetFromJsonAsync<List<NoteResponse>>("/notes");
         listed.ShouldNotBeNull();
-        listed.ShouldContain(note => note.Id == created.Id);
+        listed.ShouldHaveSingleItem().Id.ShouldBe(created.Id);
 
         var updateResponse = await client.PutAsJsonAsync($"/notes/{created.Id}", new UpdateNoteRequest("errands", "bread"));
         updateResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -38,6 +39,19 @@ public class NotesEndpointTests(WebAppFactory factory)
 
         var deletedResponse = await client.GetAsync($"/notes/{created.Id}");
         deletedResponse.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task ResetDatabase_ClearsNotes()
+    {
+        var client = factory.CreateClient();
+        await client.PostAsJsonAsync("/notes", new CreateNoteRequest("stale", "row"));
+
+        factory.ResetDatabase();
+
+        var listed = await client.GetFromJsonAsync<List<NoteResponse>>("/notes");
+        listed.ShouldNotBeNull();
+        listed.ShouldBeEmpty();
     }
 
     [Fact]
