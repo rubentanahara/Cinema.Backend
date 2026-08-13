@@ -1,0 +1,5 @@
+GET {{host}}/test
+
+###
+
+GET {{host}}/health
