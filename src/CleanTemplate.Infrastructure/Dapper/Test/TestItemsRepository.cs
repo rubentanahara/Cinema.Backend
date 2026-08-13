@@ -3,7 +3,7 @@ using CleanTemplate.Infrastructure.Common.Persistence;
 
 using Dapper;
 
-namespace CleanTemplate.Infrastructure.Features.Test;
+namespace CleanTemplate.Infrastructure.Dapper.Test;
 
 public class TestItemsRepository(IDbConnectionFactory connectionFactory) : ITestItemsRepository
 {

@@ -1,6 +1,6 @@
 using CleanTemplate.Application.Features.Test;
 using CleanTemplate.Infrastructure.Common.Persistence;
-using CleanTemplate.Infrastructure.Features.Test;
+using CleanTemplate.Infrastructure.Dapper.Test;
 
 using Dapper;
 
