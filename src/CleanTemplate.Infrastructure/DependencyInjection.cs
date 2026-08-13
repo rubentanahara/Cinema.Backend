@@ -1,5 +1,7 @@
+using CleanTemplate.Application.Features.Notes;
 using CleanTemplate.Application.Features.Test;
 using CleanTemplate.Infrastructure.Common.Persistence;
+using CleanTemplate.Infrastructure.Dapper.Notes;
 using CleanTemplate.Infrastructure.Dapper.Test;
 
 using Dapper;
@@ -25,10 +27,23 @@ public static class DependencyInjection
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
         SeedTestItems(connection);
+        CreateNotesTable(connection);
 
         services.AddSingleton<IDbConnectionFactory>(new DbConnectionFactory(connection));
         services.AddDbContext<AppDbContext>(options => options.UseSqlite(connection));
         services.AddScoped<ITestItemsRepository, TestItemsRepository>();
+        services.AddScoped<INotesRepository, NotesRepository>();
+    }
+
+    private static void CreateNotesTable(SqliteConnection connection)
+    {
+        connection.Execute("""
+            CREATE TABLE Notes (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Title TEXT NOT NULL,
+                Content TEXT NOT NULL
+            );
+            """);
     }
 
     private static void SeedTestItems(SqliteConnection connection)

@@ -1,0 +1,62 @@
+using CleanTemplate.Contracts.Notes;
+
+namespace CleanTemplate.Api.IntegrationTests;
+
+[Collection(WebAppFactoryCollection.CollectionName)]
+public class NotesEndpointTests(WebAppFactory factory)
+{
+    [Fact]
+    public async Task Crud_RoundTrip_Succeeds()
+    {
+        var client = factory.CreateClient();
+
+        var createResponse = await client.PostAsJsonAsync("/notes", new CreateNoteRequest("groceries", "milk"));
+        createResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var created = await createResponse.Content.ReadFromJsonAsync<NoteResponse>();
+        created.ShouldNotBeNull();
+        created.Title.ShouldBe("groceries");
+
+        var fetched = await client.GetFromJsonAsync<NoteResponse>($"/notes/{created.Id}");
+        fetched.ShouldNotBeNull();
+        fetched.Content.ShouldBe("milk");
+
+        var listed = await client.GetFromJsonAsync<List<NoteResponse>>("/notes");
+        listed.ShouldNotBeNull();
+        listed.ShouldContain(note => note.Id == created.Id);
+
+        var updateResponse = await client.PutAsJsonAsync($"/notes/{created.Id}", new UpdateNoteRequest("errands", "bread"));
+        updateResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var updated = await updateResponse.Content.ReadFromJsonAsync<NoteResponse>();
+        updated.ShouldNotBeNull();
+        updated.Title.ShouldBe("errands");
+        updated.Content.ShouldBe("bread");
+
+        var deleteResponse = await client.DeleteAsync($"/notes/{created.Id}");
+        deleteResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var deletedResponse = await client.GetAsync($"/notes/{created.Id}");
+        deletedResponse.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Update_MissingNote_ReturnsNotFound()
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync("/notes/999999", new UpdateNoteRequest("gone", "gone"));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Create_BlankTitle_ReturnsBadRequest()
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/notes", new CreateNoteRequest("   ", "body"));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+}
