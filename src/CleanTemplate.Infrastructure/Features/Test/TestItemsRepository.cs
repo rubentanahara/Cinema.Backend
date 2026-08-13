@@ -1,9 +1,9 @@
-using CleanTemplate.Application.Test;
+using CleanTemplate.Application.Features.Test;
 using CleanTemplate.Infrastructure.Common.Persistence;
 
 using Dapper;
 
-namespace CleanTemplate.Infrastructure.Test;
+namespace CleanTemplate.Infrastructure.Features.Test;
 
 public class TestItemsRepository(IDbConnectionFactory connectionFactory) : ITestItemsRepository
 {

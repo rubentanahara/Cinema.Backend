@@ -1,5 +1,5 @@
 using CleanTemplate.Application.Common.Messaging;
-using CleanTemplate.Application.Test;
+using CleanTemplate.Application.Features.Test;
 
 using Microsoft.Extensions.DependencyInjection;
 

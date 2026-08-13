@@ -1,4 +1,4 @@
-namespace CleanTemplate.Application.Test;
+namespace CleanTemplate.Application.Features.Test;
 
 public interface ITestItemsRepository
 {

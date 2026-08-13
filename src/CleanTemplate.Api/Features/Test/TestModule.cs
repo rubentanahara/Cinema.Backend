@@ -1,9 +1,9 @@
 using Carter;
 
 using CleanTemplate.Application.Common.Messaging;
-using CleanTemplate.Application.Test;
+using CleanTemplate.Application.Features.Test;
 
-namespace CleanTemplate.Api;
+namespace CleanTemplate.Api.Features.Test;
 
 public class TestModule : ICarterModule
 {
