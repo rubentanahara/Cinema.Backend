@@ -10,7 +10,7 @@ public interface INotesRepository
 
     Task<IReadOnlyList<Note>> ListAsync(CancellationToken cancellationToken);
 
-    Task<Note?> UpdateAsync(Note note, CancellationToken cancellationToken);
+    Task<Note?> UpdateAsync(long id, string title, string content, CancellationToken cancellationToken);
 
-    Task<bool> DeleteAsync(long id, CancellationToken cancellationToken);
+    Task<Note?> DeleteAsync(long id, CancellationToken cancellationToken);
 }

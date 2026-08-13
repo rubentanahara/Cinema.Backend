@@ -1,3 +1,5 @@
+@host = http://localhost:5519
+
 GET {{host}}/test
 
 ###

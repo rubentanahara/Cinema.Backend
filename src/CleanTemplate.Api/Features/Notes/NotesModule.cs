@@ -5,6 +5,8 @@ using CleanTemplate.Application.Features.Notes;
 using CleanTemplate.Contracts.Notes;
 using CleanTemplate.Domain.Models.Notes;
 
+using ErrorOr;
+
 namespace CleanTemplate.Api.Features.Notes;
 
 public class NotesModule : ICarterModule
@@ -15,14 +17,11 @@ public class NotesModule : ICarterModule
 
         notes.MapPost("/", async (CreateNoteRequest request, ISender sender, CancellationToken cancellationToken) =>
         {
-            if (string.IsNullOrWhiteSpace(request.Title))
-            {
-                return Results.BadRequest("Title is required.");
-            }
+            var result = await sender.Send(new CreateNoteCommand(request.Title, request.Content), cancellationToken);
 
-            var note = await sender.Send(new CreateNoteCommand(request.Title, request.Content), cancellationToken);
-
-            return Results.Created($"/notes/{note.Id}", ToResponse(note));
+            return result.MatchFirst(
+                note => Results.Created($"/notes/{note.Id}", ToResponse(note)),
+                Problem);
         });
 
         notes.MapGet("/", async (ISender sender, CancellationToken cancellationToken) =>
@@ -34,28 +33,34 @@ public class NotesModule : ICarterModule
 
         notes.MapGet("/{id:long}", async (long id, ISender sender, CancellationToken cancellationToken) =>
         {
-            var note = await sender.Send(new GetNoteQuery(id), cancellationToken);
+            var result = await sender.Send(new GetNoteQuery(id), cancellationToken);
 
-            return note is null ? Results.NotFound() : Results.Ok(ToResponse(note));
+            return result.MatchFirst(note => Results.Ok(ToResponse(note)), Problem);
         });
 
         notes.MapPut("/{id:long}", async (long id, UpdateNoteRequest request, ISender sender, CancellationToken cancellationToken) =>
         {
-            if (string.IsNullOrWhiteSpace(request.Title))
-            {
-                return Results.BadRequest("Title is required.");
-            }
+            var result = await sender.Send(new UpdateNoteCommand(id, request.Title, request.Content), cancellationToken);
 
-            var note = await sender.Send(new UpdateNoteCommand(id, request.Title, request.Content), cancellationToken);
-
-            return note is null ? Results.NotFound() : Results.Ok(ToResponse(note));
+            return result.MatchFirst(note => Results.Ok(ToResponse(note)), Problem);
         });
 
         notes.MapDelete("/{id:long}", async (long id, ISender sender, CancellationToken cancellationToken) =>
-            await sender.Send(new DeleteNoteCommand(id), cancellationToken)
-                ? Results.NoContent()
-                : Results.NotFound());
+        {
+            var result = await sender.Send(new DeleteNoteCommand(id), cancellationToken);
+
+            return result.MatchFirst(_ => Results.NoContent(), Problem);
+        });
     }
 
     private static NoteResponse ToResponse(Note note) => new(note.Id, note.Title, note.Content);
+
+    private static IResult Problem(Error error) => Results.Problem(
+        statusCode: error.Type switch
+        {
+            ErrorType.NotFound => StatusCodes.Status404NotFound,
+            ErrorType.Validation => StatusCodes.Status400BadRequest,
+            _ => StatusCodes.Status500InternalServerError,
+        },
+        detail: error.Description);
 }

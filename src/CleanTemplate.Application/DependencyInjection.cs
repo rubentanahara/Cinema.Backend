@@ -11,6 +11,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddScoped<ISender, Sender>();
+        services.AddScoped<IPublisher, Publisher>();
         services.AddHandlers();
 
         return services;
@@ -18,13 +19,13 @@ public static class DependencyInjection
 
     private static void AddHandlers(this IServiceCollection services)
     {
-        var handlerInterfaceType = typeof(IRequestHandler<,>);
+        Type[] handlerInterfaceTypes = [typeof(IRequestHandler<,>), typeof(IDomainEventHandler<>)];
 
         var handlerRegistrations = Assembly.GetExecutingAssembly()
             .GetTypes()
             .Where(type => !type.IsAbstract && !type.IsInterface)
             .SelectMany(type => type.GetInterfaces()
-                .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == handlerInterfaceType)
+                .Where(i => i.IsGenericType && handlerInterfaceTypes.Contains(i.GetGenericTypeDefinition()))
                 .Select(i => (Interface: i, Implementation: type)));
 
         foreach (var (@interface, implementation) in handlerRegistrations)
