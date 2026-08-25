@@ -2,10 +2,10 @@ SOLUTION := Cinema.slnx
 APPHOST  := Src/AppHost/Cinema.AppHost.csproj
 CONFIG   ?= Debug
 SERVICES := Catalog Seating Pricing Ordering Payments Ticketing Loyalty Concessions Identity Notifications
-PORTS    := 5101 5102 5103 5104 5105 5106 5107 5108 5109 5110
+GATEWAY  := http://localhost:5100
 
 .DEFAULT_GOAL := build
-.PHONY: build restore clean run dev tools format test status health down
+.PHONY: build restore clean run dev tools format test status health down schema
 
 build:
 	dotnet build $(SOLUTION) -c $(CONFIG)
@@ -25,6 +25,9 @@ run:
 dev:
 	dotnet run --project $(APPHOST)
 
+schema:
+	./Scripts/export-schemas.sh
+
 format:
 	dotnet format $(SOLUTION)
 
@@ -32,18 +35,14 @@ test:
 	dotnet test $(SOLUTION) -c $(CONFIG)
 
 status:
-	@for p in $(PORTS); do \
-		printf '%s ' "$$p"; \
-		curl -s --max-time 3 -X POST http://localhost:$$p/graphql \
-			-H 'Content-Type: application/json' \
-			-d '{"query":"{ serviceStatus { name checkedAt } }"}' || echo "no response"; \
-		echo ""; \
-	done
+	@curl -s --max-time 5 -X POST $(GATEWAY)/graphql \
+		-H 'Content-Type: application/json' \
+		-d '{"query":"{ catalogStatus { name } seatingStatus { name } pricingStatus { name } orderingStatus { name } paymentsStatus { name } ticketingStatus { name } loyaltyStatus { name } concessionsStatus { name } identityStatus { name } notificationsStatus { name } }"}' \
+		|| echo "gateway unreachable"
+	@echo ""
 
 health:
-	@for p in $(PORTS); do \
-		printf '%s %s\n' "$$p" "$$(curl -s --max-time 3 http://localhost:$$p/health || echo unreachable)"; \
-	done
+	@printf 'gateway %s\n' "$$(curl -s --max-time 3 $(GATEWAY)/health || echo unreachable)"
 
 down:
 	@pkill -f Cinema.AppHost 2>/dev/null || true

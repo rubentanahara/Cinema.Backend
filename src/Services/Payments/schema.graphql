@@ -1,0 +1,16 @@
+schema {
+  query: Query
+}
+
+type Query {
+  paymentsStatus: PaymentsStatus!
+}
+
+type PaymentsStatus {
+  name: String!
+  checkedAt: DateTime!
+}
+
+"The `DateTime` scalar type represents a date and time with time zone offset information."
+scalar DateTime
+  @specifiedBy(url: "https://scalars.graphql.org/chillicream/date-time.html")

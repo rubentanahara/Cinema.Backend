@@ -1,0 +1,13 @@
+@host = http://localhost:5100
+
+### Federated query — every subgraph through one endpoint
+POST {{host}}/graphql
+Content-Type: application/json
+
+{"query":"{ catalogStatus { name } seatingStatus { name } orderingStatus { name checkedAt } }"}
+
+### Gateway readiness
+GET {{host}}/health
+
+### Gateway liveness
+GET {{host}}/alive

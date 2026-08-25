@@ -4,13 +4,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-builder.Services
-    .AddGraphQLServer()
-    .AddOrderingTypes();
+builder.AddGraphQL().AddTypes();
 
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
 app.MapGraphQL();
 
-await app.RunAsync();
+await app.RunWithGraphQLCommandsAsync(args);

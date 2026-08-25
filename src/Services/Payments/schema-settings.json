@@ -1,0 +1,8 @@
+{
+  "name": "payments",
+  "transports": {
+    "http": {
+      "url": "http://payments:8080/graphql"
+    }
+  }
+}

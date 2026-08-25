@@ -1,0 +1,8 @@
+{
+  "name": "loyalty",
+  "transports": {
+    "http": {
+      "url": "http://loyalty:8080/graphql"
+    }
+  }
+}

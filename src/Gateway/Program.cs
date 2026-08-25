@@ -6,7 +6,9 @@ builder.AddServiceDefaults();
 
 builder.Services.AddHttpClient("fusion");
 
-builder.AddGraphQLGateway();
+builder
+    .AddGraphQLGateway()
+    .AddFileSystemConfiguration("./gateway.far");
 
 var app = builder.Build();
 

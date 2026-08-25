@@ -1,0 +1,8 @@
+{
+  "name": "identity",
+  "transports": {
+    "http": {
+      "url": "http://identity:8080/graphql"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "concessions",
+  "transports": {
+    "http": {
+      "url": "http://concessions:8080/graphql"
+    }
+  }
+}
