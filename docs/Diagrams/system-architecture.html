@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cinema — System Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#0A0E1A; --paper-2:#131C33; --ink:#FFFFFF;
+    --muted:#AAB4CC; --soft:#7A8AA8;
+    --rule:#26324F; --rule-solid:#3A4A73;
+    --accent:#F0873A; --link:#4C6FFF; --primary:#3A5CE6;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:3rem 2rem;
+    background:var(--paper); color:var(--ink);
+    font-family:'Geist',system-ui,sans-serif;
+  }
+  .wrap{max-width:1240px;margin:0 auto}
+  .eyebrow{
+    font-family:'Geist Mono',monospace; font-size:8px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--soft); margin:0 0 .5rem;
+  }
+  h1{
+    font-family:'Instrument Serif',serif; font-weight:400; font-size:1.75rem;
+    margin:0 0 .5rem; color:var(--ink);
+  }
+  .sub{color:var(--muted); font-size:.875rem; margin:0 0 2rem; max-width:64ch; line-height:1.6}
+  svg{width:100%;height:auto;display:block}
+  .cards{display:grid;grid-template-columns:1.1fr 1fr .9fr;gap:1rem;margin-top:2.5rem}
+  .card{background:var(--paper-2);border:1px solid var(--rule);border-radius:6px;padding:1.25rem}
+  .card h3{font-size:.8125rem;margin:0;font-weight:600;color:var(--ink)}
+  .card-header{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem}
+  .card-dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .dot-accent{background:var(--accent)} .dot-link{background:var(--link)} .dot-soft{background:var(--soft)}
+  .card ul{margin:0;padding-left:1rem;color:var(--muted);font-size:.8125rem;line-height:1.7}
+  .card .eyebrow{margin-bottom:.75rem}
+  footer{
+    margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--rule);
+    font-family:'Geist Mono',monospace;font-size:8px;letter-spacing:.12em;
+    color:var(--soft);text-transform:uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Cinema · full stack</p>
+  <h1>System architecture</h1>
+  <p class="sub">Ten services, each owning its own database, composed into one schema by a federated
+  gateway. Three of ten subgraphs are drawn; the rest follow the same shape.</p>
+
+<svg viewBox="0 0 1176 664" role="img" aria-labelledby="cinema-architecture-title cinema-architecture-desc" xmlns="http://www.w3.org/2000/svg">
+  <title id="cinema-architecture-title">Cinema system architecture</title>
+  <desc id="cinema-architecture-desc">A MAUI mobile client authenticates against Cognito and calls a public load balancer, which routes GraphQL traffic to a Fusion gateway inside a private VPC. The gateway composes responses from ten subgraph services, three of which are shown; each service reads and writes its own Aurora cluster, and the ordering service publishes domain events to EventBridge for delivery to per-consumer SQS queues.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#7A8AA8"/>
+    </marker>
+    <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#4C6FFF"/>
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#0A0E1A"/>
+
+  <!-- zones (painted first) -->
+  <rect x="208" y="48" width="932" height="520" rx="8" fill="rgba(255,255,255,0.02)" stroke="#26324F" stroke-width="1"/>
+  <text x="224" y="72" fill="#7A8AA8" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">AWS · US-EAST-1</text>
+
+  <rect x="432" y="104" width="700" height="340" rx="8" fill="rgba(58,92,230,0.05)" stroke="#3A5CE6" stroke-opacity="0.5" stroke-width="1" stroke-dasharray="4,4"/>
+  <text x="448" y="128" fill="#7A8AA8" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">VPC · PRIVATE SUBNETS</text>
+  <text x="448" y="428" fill="#7A8AA8" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.10em">10 SUBGRAPHS · 3 SHOWN</text>
+
+  <!-- ============ arrows (drawn before boxes) ============ -->
+
+  <!-- MAUI -> ALB -->
+  <line x1="184" y1="288" x2="240" y2="288" stroke="#4C6FFF" stroke-width="1" marker-end="url(#arrow-link)"/>
+  <rect x="188" y="268" width="48" height="12" rx="2" fill="#0A0E1A"/>
+  <text x="212" y="277" fill="#4C6FFF" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">GRAPHQL</text>
+
+  <!-- MAUI -> Cognito -->
+  <path d="M 184 264 H 204 A 8 8 0 0 1 212 256 V 116 A 8 8 0 0 1 220 108 H 240"
+        fill="none" stroke="#4C6FFF" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow-link)"/>
+  <rect x="224" y="184" width="60" height="12" rx="2" fill="#0A0E1A"/>
+  <text x="228" y="193" fill="#4C6FFF" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">AUTH · SRP</text>
+
+  <!-- ALB -> Gateway -->
+  <line x1="392" y1="288" x2="456" y2="288" stroke="#4C6FFF" stroke-width="1" marker-end="url(#arrow-link)"/>
+  <rect x="408" y="268" width="32" height="12" rx="2" fill="#0A0E1A"/>
+  <text x="424" y="277" fill="#4C6FFF" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">TLS</text>
+
+  <!-- Gateway -> catalog -->
+  <path d="M 624 272 H 644 A 8 8 0 0 0 652 264 V 184 A 8 8 0 0 1 660 176 H 696"
+        fill="none" stroke="#7A8AA8" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- Gateway -> seating -->
+  <line x1="624" y1="288" x2="696" y2="288" stroke="#7A8AA8" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="644" y="268" width="32" height="12" rx="2" fill="#0A0E1A"/>
+  <text x="660" y="277" fill="#7A8AA8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SSE</text>
+
+  <!-- Gateway -> ordering -->
+  <path d="M 624 304 H 660 A 8 8 0 0 1 668 312 V 392 A 8 8 0 0 0 676 400 H 696"
+        fill="none" stroke="#7A8AA8" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- catalog -> Aurora -->
+  <path d="M 856 176 H 880 A 8 8 0 0 1 888 184 V 264 A 8 8 0 0 0 896 272 H 936"
+        fill="none" stroke="#7A8AA8" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- seating -> Aurora -->
+  <line x1="856" y1="288" x2="936" y2="288" stroke="#7A8AA8" stroke-width="1" marker-end="url(#arrow)"/>
+  <rect x="864" y="268" width="64" height="12" rx="2" fill="#0A0E1A"/>
+  <text x="896" y="277" fill="#7A8AA8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">HOLD ROWS</text>
+
+  <!-- ordering -> Aurora -->
+  <path d="M 856 388 H 896 A 8 8 0 0 0 904 380 V 312 A 8 8 0 0 1 912 304 H 936"
+        fill="none" stroke="#7A8AA8" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- ordering -> EventBridge -->
+  <path d="M 856 412 H 908 A 8 8 0 0 1 916 420 V 492 A 8 8 0 0 0 924 500 H 936"
+        fill="none" stroke="#7A8AA8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+  <rect x="856" y="448" width="48" height="12" rx="2" fill="#0A0E1A"/>
+  <text x="904" y="457" fill="#7A8AA8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.06em">OUTBOX</text>
+
+  <!-- ============ nodes ============ -->
+
+  <!-- MAUI client -->
+  <rect x="32" y="248" width="152" height="80" rx="6" fill="#0A0E1A"/>
+  <rect x="32" y="248" width="152" height="80" rx="6" fill="rgba(170,180,204,0.10)" stroke="#7A8AA8" stroke-width="1"/>
+  <rect x="40" y="256" width="28" height="12" rx="2" fill="transparent" stroke="rgba(122,138,168,0.40)" stroke-width="0.8"/>
+  <text x="54" y="265" fill="rgba(122,138,168,0.9)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">APP</text>
+  <text x="108" y="294" fill="#FFFFFF" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Cinema.Maui</text>
+  <text x="108" y="312" fill="#AAB4CC" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">ios · android · mac</text>
+
+  <!-- Cognito -->
+  <rect x="240" y="72" width="152" height="72" rx="6" fill="#0A0E1A"/>
+  <rect x="240" y="72" width="152" height="72" rx="6" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.30)" stroke-width="1"/>
+  <rect x="248" y="80" width="32" height="12" rx="2" fill="transparent" stroke="rgba(255,255,255,0.30)" stroke-width="0.8"/>
+  <text x="264" y="89" fill="rgba(255,255,255,0.60)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">AUTH</text>
+  <text x="316" y="114" fill="#FFFFFF" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Cognito</text>
+  <text x="316" y="132" fill="#AAB4CC" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">user pool · srp</text>
+
+  <!-- ALB -->
+  <rect x="240" y="252" width="152" height="72" rx="6" fill="#0A0E1A"/>
+  <rect x="240" y="252" width="152" height="72" rx="6" fill="#131C33" stroke="#3A4A73" stroke-width="1"/>
+  <rect x="248" y="260" width="32" height="12" rx="2" fill="transparent" stroke="rgba(58,74,115,0.60)" stroke-width="0.8"/>
+  <text x="264" y="269" fill="#AAB4CC" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">EDGE</text>
+  <text x="316" y="294" fill="#FFFFFF" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Application LB</text>
+  <text x="316" y="312" fill="#AAB4CC" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">acm tls · 3 rules</text>
+
+  <!-- Fusion gateway (FOCAL) -->
+  <rect x="456" y="248" width="168" height="80" rx="6" fill="#0A0E1A"/>
+  <rect x="456" y="248" width="168" height="80" rx="6" fill="rgba(240,135,58,0.12)" stroke="#F0873A" stroke-width="1"/>
+  <rect x="464" y="256" width="28" height="12" rx="2" fill="transparent" stroke="rgba(240,135,58,0.40)" stroke-width="0.8"/>
+  <text x="478" y="265" fill="#F0873A" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">GQL</text>
+  <text x="540" y="294" fill="#FFFFFF" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Fusion Gateway</text>
+  <text x="540" y="312" fill="#AAB4CC" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">composite schema</text>
+
+  <!-- catalog -->
+  <rect x="696" y="140" width="160" height="72" rx="6" fill="#0A0E1A"/>
+  <rect x="696" y="140" width="160" height="72" rx="6" fill="#131C33" stroke="#3A4A73" stroke-width="1"/>
+  <rect x="704" y="148" width="28" height="12" rx="2" fill="transparent" stroke="rgba(58,74,115,0.60)" stroke-width="0.8"/>
+  <text x="718" y="157" fill="#AAB4CC" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SVC</text>
+  <text x="776" y="182" fill="#FFFFFF" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">catalog</text>
+  <text x="776" y="200" fill="#AAB4CC" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">films · showtimes</text>
+
+  <!-- seating (FOCAL) -->
+  <rect x="696" y="252" width="160" height="72" rx="6" fill="#0A0E1A"/>
+  <rect x="696" y="252" width="160" height="72" rx="6" fill="rgba(240,135,58,0.12)" stroke="#F0873A" stroke-width="1"/>
+  <rect x="704" y="260" width="28" height="12" rx="2" fill="transparent" stroke="rgba(240,135,58,0.40)" stroke-width="0.8"/>
+  <text x="718" y="269" fill="#F0873A" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SVC</text>
+  <text x="776" y="294" fill="#FFFFFF" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">seating</text>
+  <text x="776" y="312" fill="#AAB4CC" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">holds · subscription</text>
+
+  <!-- ordering -->
+  <rect x="696" y="364" width="160" height="72" rx="6" fill="#0A0E1A"/>
+  <rect x="696" y="364" width="160" height="72" rx="6" fill="#131C33" stroke="#3A4A73" stroke-width="1"/>
+  <rect x="704" y="372" width="28" height="12" rx="2" fill="transparent" stroke="rgba(58,74,115,0.60)" stroke-width="0.8"/>
+  <text x="718" y="381" fill="#AAB4CC" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SVC</text>
+  <text x="776" y="406" fill="#FFFFFF" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">ordering</text>
+  <text x="776" y="424" fill="#AAB4CC" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">saga · outbox</text>
+
+  <!-- Aurora -->
+  <rect x="936" y="252" width="176" height="72" rx="6" fill="#0A0E1A"/>
+  <rect x="936" y="252" width="176" height="72" rx="6" fill="rgba(255,255,255,0.05)" stroke="#7A8AA8" stroke-width="1"/>
+  <rect x="944" y="260" width="32" height="12" rx="2" fill="transparent" stroke="rgba(122,138,168,0.40)" stroke-width="0.8"/>
+  <text x="960" y="269" fill="rgba(122,138,168,0.9)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">DATA</text>
+  <text x="1024" y="294" fill="#FFFFFF" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Aurora ×10</text>
+  <text x="1024" y="312" fill="#AAB4CC" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">database per service</text>
+
+  <!-- EventBridge -->
+  <rect x="936" y="464" width="176" height="72" rx="6" fill="#0A0E1A"/>
+  <rect x="936" y="464" width="176" height="72" rx="6" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.20)" stroke-width="1" stroke-dasharray="4,3"/>
+  <rect x="944" y="472" width="36" height="12" rx="2" fill="transparent" stroke="rgba(255,255,255,0.20)" stroke-width="0.8"/>
+  <text x="962" y="481" fill="rgba(255,255,255,0.55)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">ASYNC</text>
+  <text x="1024" y="506" fill="#FFFFFF" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">EventBridge</text>
+  <text x="1024" y="524" fill="#AAB4CC" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">sqs per consumer</text>
+
+  <!-- ============ legend ============ -->
+  <line x1="32" y1="592" x2="1144" y2="592" stroke="#26324F" stroke-width="0.8"/>
+  <text x="32" y="612" fill="#7A8AA8" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+
+  <rect x="120" y="604" width="12" height="10" rx="2" fill="rgba(240,135,58,0.12)" stroke="#F0873A" stroke-width="1"/>
+  <text x="140" y="612" fill="#AAB4CC" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">FOCAL</text>
+
+  <rect x="248" y="604" width="12" height="10" rx="2" fill="#131C33" stroke="#3A4A73" stroke-width="1"/>
+  <text x="268" y="612" fill="#AAB4CC" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">SERVICE</text>
+
+  <rect x="392" y="604" width="12" height="10" rx="2" fill="rgba(255,255,255,0.05)" stroke="#7A8AA8" stroke-width="1"/>
+  <text x="412" y="612" fill="#AAB4CC" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">DATA STORE</text>
+
+  <rect x="560" y="604" width="12" height="10" rx="2" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.30)" stroke-width="1"/>
+  <text x="580" y="612" fill="#AAB4CC" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">AWS MANAGED</text>
+
+  <line x1="728" y1="609" x2="748" y2="609" stroke="#4C6FFF" stroke-width="1"/>
+  <text x="756" y="612" fill="#AAB4CC" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">HTTP / GRAPHQL</text>
+
+  <line x1="916" y1="609" x2="936" y2="609" stroke="#7A8AA8" stroke-width="1" stroke-dasharray="5,4"/>
+  <text x="944" y="612" fill="#AAB4CC" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">ASYNC / OPTIONAL</text>
+</svg>
+
+  <div class="cards">
+    <div class="card">
+      <p class="eyebrow">Edge</p>
+      <div class="card-header"><span class="card-dot dot-accent"></span><h3>One gateway, three routes</h3></div>
+      <ul>
+        <li><code>/graphql</code> → Fusion gateway</li>
+        <li><code>/webhooks/psp</code> → payments</li>
+        <li><code>/redemptions</code> → ticketing</li>
+        <li>No AWS API Gateway, YARP or Ocelot</li>
+      </ul>
+    </div>
+    <div class="card">
+      <p class="eyebrow">Data</p>
+      <div class="card-header"><span class="card-dot dot-soft"></span><h3>No shared database</h3></div>
+      <ul>
+        <li>One Aurora cluster per service</li>
+        <li>Cross-service data duplicated by event</li>
+        <li>Seat uniqueness is a partial unique index</li>
+      </ul>
+    </div>
+    <div class="card">
+      <p class="eyebrow">Realtime</p>
+      <div class="card-header"><span class="card-dot dot-link"></span><h3>One live surface</h3></div>
+      <ul>
+        <li>Seat map only</li>
+        <li>Subgraph SSE passthrough</li>
+        <li>No message broker</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer>Cinema · phase 0 · locally orchestrated by Aspire, deployed on demand with CDK</footer>
+</div>
+</body>
+</html>
