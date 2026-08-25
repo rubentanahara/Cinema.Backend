@@ -1,9 +1,17 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/Cinema.Api/Cinema.Api.csproj" />
-    <Project Path="src/Cinema.Application/Cinema.Application.csproj" />
-    <Project Path="src/Cinema.Contracts/Cinema.Contracts.csproj" />
-    <Project Path="src/Cinema.Domain/Cinema.Domain.csproj" />
-    <Project Path="src/Cinema.Infrastructure/Cinema.Infrastructure.csproj" />
+  <Folder Name="/services/">
+    <Project Path="Src/Services/Catalog/Cinema.Catalog.csproj" />
+    <Project Path="Src/Services/Seating/Cinema.Seating.csproj" />
+    <Project Path="Src/Services/Pricing/Cinema.Pricing.csproj" />
+    <Project Path="Src/Services/Ordering/Cinema.Ordering.csproj" />
+    <Project Path="Src/Services/Payments/Cinema.Payments.csproj" />
+    <Project Path="Src/Services/Ticketing/Cinema.Ticketing.csproj" />
+    <Project Path="Src/Services/Loyalty/Cinema.Loyalty.csproj" />
+    <Project Path="Src/Services/Concessions/Cinema.Concessions.csproj" />
+    <Project Path="Src/Services/Identity/Cinema.Identity.csproj" />
+    <Project Path="Src/Services/Notifications/Cinema.Notifications.csproj" />
   </Folder>
+  <Project Path="Src/AppHost/Cinema.AppHost.csproj" />
+  <Project Path="Src/SharedKernel/Cinema.SharedKernel.csproj" />
+  <Project Path="Src/ServiceDefaults/Cinema.ServiceDefaults.csproj" />
 </Solution>
