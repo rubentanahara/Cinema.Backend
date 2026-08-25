@@ -140,6 +140,24 @@ ALB (ACM TLS, optional WAF)
 Three ALB listener rules, three target groups. A PSP webhook is an inbound machine callback, not a client
 query, so it does not pass through the GraphQL gateway.
 
+### Gateway composition, deferred
+
+There is exactly **one** gateway: `Cinema.Gateway`, the Fusion gateway, local port **5100**. The ALB is a
+load balancer, not a gateway, and exists only in AWS. AWS API Gateway, YARP and Ocelot are rejected above.
+
+Schema composition is **not wired yet**. In `HotChocolate.Fusion.Aspire` 16.6.1 both Aspire composition entry
+points are obsolete in favour of Nitro-branded replacements — `AddGraphQLOrchestrator` → `AddNitroComposition`,
+`WithGraphQLSchemaComposition` → `WithNitroComposition` — and the assembly also exposes `WithNitroApiId` and
+`AddNitroPortalUrlsAsync`. Wiring it today would couple the inner loop to a proprietary product while the ten
+subgraphs expose one `serviceStatus` field each and no client consumes them.
+
+The gateway project is built and in the solution; it is not in the AppHost run graph. Subgraphs already declare
+`.WithGraphQLHttpEndpoint()`, so composition is a one-line change once there is a schema worth composing.
+
+Decide at phase 0.2, when `catalog` has a real schema, between: local `nitro fusion compose` producing a
+`gateway.far` loaded via `AddFileSystemConfiguration` (no cloud, extra CLI), or Nitro's hosted registry
+(breaking-change detection and atomic rollout, proprietary, free tier).
+
 ### Required edge hardening
 
 | Concern | Where |
@@ -371,4 +389,5 @@ Notes carrying real consequences:
 | Date | Change |
 |---|---|
 | 2026-08-24 | Initial decision log from the architecture session. Scope, market, service topology, seat-hold model, federation, saga, identity, client, infrastructure, delivery, and phases recorded. |
+| 2026-08-24 | Gateway composition deferred to phase 0.2: Fusion Aspire 16.6.1 routes local composition through Nitro-branded APIs, and there is no schema worth composing yet. Gateway project built but out of the run graph. |
 | 2026-08-24 | Edge and gateway section added: AWS API Gateway, YARP and Ocelot rejected with reasons; ALB three-route topology; query cost analysis and persisted operations recorded as required hardening. Sentence-case folder convention and fixed local ports 5101-5110 recorded. |

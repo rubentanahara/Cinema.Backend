@@ -12,9 +12,11 @@
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="HotChocolate.Fusion.Aspire" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../Gateway/Cinema.Gateway.csproj" />
     <ProjectReference Include="../Services/Catalog/Cinema.Catalog.csproj" />
     <ProjectReference Include="../Services/Seating/Cinema.Seating.csproj" />
     <ProjectReference Include="../Services/Pricing/Cinema.Pricing.csproj" />
