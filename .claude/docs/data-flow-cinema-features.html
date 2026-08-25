@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cinema backend: request path per feature</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;   /* white-smoke */
+      --color-ink:     #2d3142;   /* jet-black */
+      --color-muted:   #4f5d75;   /* blue-slate */
+      --color-accent:  #eb6c36;   /* atomic-tangerine */
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1200px; width: 100%; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+
+    svg { width: 100%; min-width: 900px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Data flow · Cinema backend</p>
+    <h1>Cinema backend: request path per feature</h1>
+
+    <svg viewBox="0 0 728 436" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="cinema-feature-data-flow-title cinema-feature-data-flow-desc">
+      <title id="cinema-feature-data-flow-title">Cinema backend: request path per feature</title>
+      <desc id="cinema-feature-data-flow-desc">Data flow showing how four cinema features — browse catalog, seat hold, take payment and issue ticket — each travel from the GraphQL API through the application, domain and infrastructure layers into Postgres, Stripe and AWS SES.</desc>
+      <defs>
+      <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="11" cy="11" r="0.8" fill="rgba(45,49,66,0.10)"/></pattern>
+      <marker id="arr-muted" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#4f5d75"/></marker>
+      <marker id="arr-accent" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#eb6c36"/></marker>
+      <marker id="arr-link" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#2e5aa8"/></marker>
+      </defs>
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+      <rect width="100%" height="100%" fill="url(#dots)"/>
+      <rect x="0" y="36" width="728" height="80" fill="rgba(45,49,66,0.018)"/>
+      <rect x="0" y="196" width="728" height="80" fill="rgba(45,49,66,0.018)"/>
+      <line x1="0" y1="36" x2="728" y2="36" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
+      <line x1="0" y1="116" x2="728" y2="116" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
+      <line x1="0" y1="196" x2="728" y2="196" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
+      <line x1="0" y1="276" x2="728" y2="276" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
+      <line x1="0" y1="356" x2="728" y2="356" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
+      <line x1="140" y1="36" x2="140" y2="356" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
+      <rect x="180" y="6" width="32" height="16" rx="8" fill="rgba(45,49,66,0.12)"/>
+      <text x="196" y="14" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.08em">01</text>
+      <text x="196" y="29" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="middle" letter-spacing="0.14em">RESOLVE</text>
+      <rect x="292" y="6" width="32" height="16" rx="8" fill="rgba(45,49,66,0.12)"/>
+      <text x="308" y="14" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.08em">02</text>
+      <text x="308" y="29" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="middle" letter-spacing="0.14em">DISPATCH</text>
+      <rect x="404" y="6" width="32" height="16" rx="8" fill="rgba(45,49,66,0.12)"/>
+      <text x="420" y="14" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.08em">03</text>
+      <text x="420" y="29" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="middle" letter-spacing="0.14em">DECIDE</text>
+      <rect x="516" y="6" width="32" height="16" rx="8" fill="rgba(235,108,54,0.20)"/>
+      <text x="532" y="14" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.08em">04</text>
+      <text x="532" y="29" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="middle" letter-spacing="0.14em">PERSIST</text>
+      <rect x="628" y="6" width="32" height="16" rx="8" fill="rgba(45,49,66,0.12)"/>
+      <text x="644" y="14" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.08em">05</text>
+      <text x="644" y="29" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="middle" letter-spacing="0.14em">STORE</text>
+      <text x="70" y="72" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="middle" letter-spacing="0.14em">BROWSE</text>
+      <text x="70" y="84" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="middle" letter-spacing="0.14em">CATALOG</text>
+      <text x="70" y="152" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="middle" letter-spacing="0.14em">SEAT</text>
+      <text x="70" y="164" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="middle" letter-spacing="0.14em">HOLD</text>
+      <text x="70" y="232" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="middle" letter-spacing="0.14em">TAKE</text>
+      <text x="70" y="244" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="middle" letter-spacing="0.14em">PAYMENT</text>
+      <text x="70" y="312" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="middle" letter-spacing="0.14em">ISSUE</text>
+      <text x="70" y="324" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="middle" letter-spacing="0.14em">TICKET</text>
+      <line x1="246" y1="76" x2="256" y2="76" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="358" y1="76" x2="480" y2="76" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="582" y1="76" x2="592" y2="76" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="246" y1="156" x2="256" y2="156" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="358" y1="156" x2="368" y2="156" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="470" y1="156" x2="480" y2="156" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="582" y1="156" x2="592" y2="156" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="246" y1="236" x2="256" y2="236" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="358" y1="236" x2="368" y2="236" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="470" y1="236" x2="480" y2="236" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="582" y1="236" x2="592" y2="236" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="246" y1="316" x2="256" y2="316" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="358" y1="316" x2="368" y2="316" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="470" y1="316" x2="480" y2="316" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="582" y1="316" x2="592" y2="316" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <line x1="420" y1="188" x2="420" y2="202" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr-muted)"/>
+      <line x1="420" y1="268" x2="420" y2="282" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr-muted)"/>
+      <line x1="532" y1="108" x2="532" y2="122" stroke="#eb6c36" stroke-width="1.2" marker-end="url(#arr-accent)"/>
+      <rect x="542" y="110" width="46" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="565" y="119" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SEAT ROWS</text>
+      <rect x="146" y="44" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="146" y="44" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="150" y="48" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="159" y="55" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">BRW</text>
+      <text x="196" y="67" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">showtimes()</text>
+      <text x="196" y="79" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">query · dataloader</text>
+      <text x="196" y="91" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">HotChocolate 16.6.1</text>
+      <rect x="150" y="98" width="16" height="8" rx="3" fill="#6e6479"/>
+      <text x="158" y="104" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle" letter-spacing="0.06em">WB</text>
+      <rect x="258" y="44" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="258" y="44" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="262" y="48" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="271" y="55" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">BRW</text>
+      <text x="308" y="67" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">ListShowtimes</text>
+      <text x="308" y="79" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">IRequestHandler</text>
+      <text x="308" y="91" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">Cinema.Application</text>
+      <rect x="482" y="44" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="482" y="44" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="486" y="48" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="495" y="55" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">BRW</text>
+      <text x="532" y="67" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">ShowtimeRepo</text>
+      <text x="532" y="79" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">SELECT · batch by id</text>
+      <text x="532" y="91" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">Dapper 2.1.79</text>
+      <rect x="594" y="44" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="594" y="44" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="598" y="48" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="607" y="55" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">BRW</text>
+      <text x="644" y="67" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">Postgres</text>
+      <text x="644" y="79" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">showtimes · seats</text>
+      <text x="644" y="91" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">Npgsql 10.0.3</text>
+      <rect x="674" y="98" width="16" height="8" rx="3" fill="#b8915a"/>
+      <text x="682" y="104" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle" letter-spacing="0.06em">TB</text>
+      <rect x="146" y="124" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="146" y="124" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="150" y="128" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="159" y="135" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">HLD</text>
+      <text x="196" y="147" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">holdSeats()</text>
+      <text x="196" y="159" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">mutation · authorized</text>
+      <text x="196" y="171" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">Cognito JWT bearer</text>
+      <rect x="150" y="178" width="16" height="8" rx="3" fill="#6e6479"/>
+      <text x="158" y="184" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle" letter-spacing="0.06em">WB</text>
+      <rect x="258" y="124" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="258" y="124" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="262" y="128" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="271" y="135" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">HLD</text>
+      <text x="308" y="147" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">HoldSeatsCmd</text>
+      <text x="308" y="159" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">ISender → handler</text>
+      <text x="308" y="171" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">ErrorOr 2.1.1</text>
+      <rect x="370" y="124" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="370" y="124" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="374" y="128" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="383" y="135" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">HLD</text>
+      <text x="420" y="147" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">SeatHold</text>
+      <text x="420" y="159" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">expiry · seat rules</text>
+      <text x="420" y="171" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">Cinema.Domain</text>
+      <rect x="450" y="178" width="16" height="8" rx="3" fill="#4a7c59"/>
+      <text x="458" y="184" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle" letter-spacing="0.06em">LS</text>
+      <rect x="482" y="124" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="482" y="124" width="100" height="64" rx="6" fill="rgba(235,108,54,0.07)" stroke="#eb6c36" stroke-width="1"/>
+      <rect x="486" y="128" width="18" height="10" rx="3" fill="rgba(235,108,54,0.20)"/>
+      <text x="495" y="135" fill="#eb6c36" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">HLD</text>
+      <text x="532" y="147" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">Seat Lock Txn</text>
+      <text x="532" y="159" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">release + insert</text>
+      <text x="532" y="171" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">single transaction</text>
+      <rect x="594" y="124" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="594" y="124" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="598" y="128" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="607" y="135" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">HLD</text>
+      <text x="644" y="147" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">Postgres</text>
+      <text x="644" y="159" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">ux_seat_active</text>
+      <text x="644" y="171" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">unique partial index</text>
+      <rect x="674" y="178" width="16" height="8" rx="3" fill="#b8915a"/>
+      <text x="682" y="184" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle" letter-spacing="0.06em">TB</text>
+      <rect x="146" y="204" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="146" y="204" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="150" y="208" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="159" y="215" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">PAY</text>
+      <text x="196" y="227" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">payBooking()</text>
+      <text x="196" y="239" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">mutation · authorized</text>
+      <text x="196" y="251" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">Cognito JWT bearer</text>
+      <rect x="150" y="258" width="16" height="8" rx="3" fill="#6e6479"/>
+      <text x="158" y="264" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle" letter-spacing="0.06em">WB</text>
+      <rect x="258" y="204" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="258" y="204" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="262" y="208" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="271" y="215" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">PAY</text>
+      <text x="308" y="227" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">PayBookingCmd</text>
+      <text x="308" y="239" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">idempotency key</text>
+      <text x="308" y="251" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">Cinema.Application</text>
+      <rect x="370" y="204" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="370" y="204" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="374" y="208" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="383" y="215" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">PAY</text>
+      <text x="420" y="227" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">Reservation</text>
+      <text x="420" y="239" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">hold valid? confirm</text>
+      <text x="420" y="251" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">Cinema.Domain</text>
+      <rect x="450" y="258" width="16" height="8" rx="3" fill="#4a7c59"/>
+      <text x="458" y="264" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle" letter-spacing="0.06em">LS</text>
+      <rect x="482" y="204" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="482" y="204" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="486" y="208" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="495" y="215" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">PAY</text>
+      <text x="532" y="227" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">PaymentAdapter</text>
+      <text x="532" y="239" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">intent · capture</text>
+      <text x="532" y="251" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">Cinema.Infrastructure</text>
+      <rect x="594" y="204" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="594" y="204" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="598" y="208" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="607" y="215" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">PAY</text>
+      <text x="644" y="227" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">Payments Store</text>
+      <text x="644" y="239" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">stripe · postgres</text>
+      <text x="644" y="251" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">webhook callback</text>
+      <rect x="674" y="258" width="16" height="8" rx="3" fill="#b8915a"/>
+      <text x="682" y="264" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle" letter-spacing="0.06em">TB</text>
+      <rect x="146" y="284" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="146" y="284" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="150" y="288" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="159" y="295" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">TKT</text>
+      <text x="196" y="307" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">POST /webhooks</text>
+      <text x="196" y="319" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">webhook · minimal API</text>
+      <text x="196" y="331" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">signature verify</text>
+      <rect x="150" y="338" width="16" height="8" rx="3" fill="#6e6479"/>
+      <text x="158" y="344" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle" letter-spacing="0.06em">WB</text>
+      <rect x="258" y="284" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="258" y="284" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="262" y="288" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="271" y="295" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">TKT</text>
+      <text x="308" y="307" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">ConfirmPayment</text>
+      <text x="308" y="319" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">replay-safe</text>
+      <text x="308" y="331" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">Cinema.Application</text>
+      <rect x="370" y="284" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="370" y="284" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="374" y="288" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="383" y="295" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">TKT</text>
+      <text x="420" y="307" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">TicketIssued</text>
+      <text x="420" y="319" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">domain event</text>
+      <text x="420" y="331" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">IDomainEvent</text>
+      <rect x="450" y="338" width="16" height="8" rx="3" fill="#4a7c59"/>
+      <text x="458" y="344" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle" letter-spacing="0.06em">LS</text>
+      <rect x="482" y="284" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="482" y="284" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="486" y="288" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="495" y="295" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">TKT</text>
+      <text x="532" y="307" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">Ticket Outbox</text>
+      <text x="532" y="319" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">INSERT tickets</text>
+      <text x="532" y="331" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">Dapper · outbox</text>
+      <rect x="594" y="284" width="100" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="594" y="284" width="100" height="64" rx="6" fill="#f5f5f5" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+      <rect x="598" y="288" width="18" height="10" rx="3" fill="rgba(45,49,66,0.12)"/>
+      <text x="607" y="295" fill="#4f5d75" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle" letter-spacing="0.06em">TKT</text>
+      <text x="644" y="307" fill="#2d3142" font-size="9" font-family="'Geist', sans-serif" font-weight="600" text-anchor="middle">Postgres + SES</text>
+      <text x="644" y="319" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">qr codes · email</text>
+      <text x="644" y="331" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle">AWS SES</text>
+      <rect x="674" y="338" width="16" height="8" rx="3" fill="#9c6b50"/>
+      <text x="682" y="344" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle" letter-spacing="0.06em">FL</text>
+      <line x1="0" y1="356" x2="728" y2="356" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
+      <text x="144" y="372" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="end" letter-spacing="0.14em">STEPS</text>
+      <rect x="156" y="363" width="18" height="12" rx="6" fill="rgba(45,49,66,0.12)"/>
+      <text x="165" y="371" fill="#2d3142" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle">01</text>
+      <text x="180" y="371" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.1em">RESOLVE</text>
+      <rect x="264" y="363" width="18" height="12" rx="6" fill="rgba(45,49,66,0.12)"/>
+      <text x="273" y="371" fill="#2d3142" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle">02</text>
+      <text x="288" y="371" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.1em">DISPATCH</text>
+      <rect x="372" y="363" width="18" height="12" rx="6" fill="rgba(45,49,66,0.12)"/>
+      <text x="381" y="371" fill="#2d3142" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle">03</text>
+      <text x="396" y="371" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.1em">DECIDE</text>
+      <rect x="480" y="363" width="18" height="12" rx="6" fill="rgba(235,108,54,0.20)"/>
+      <text x="489" y="371" fill="#eb6c36" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle">04</text>
+      <text x="504" y="371" fill="#eb6c36" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.1em">PERSIST</text>
+      <rect x="588" y="363" width="18" height="12" rx="6" fill="rgba(45,49,66,0.12)"/>
+      <text x="597" y="371" fill="#2d3142" font-size="6" font-family="'Geist Mono', monospace" font-weight="600" text-anchor="middle">05</text>
+      <text x="612" y="371" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.1em">STORE</text>
+      <text x="144" y="393" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="end" letter-spacing="0.14em">PAYLOAD</text>
+      <rect x="156" y="385" width="16" height="8" rx="3" fill="#6e6479"/>
+      <text x="164" y="391" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle">WB</text>
+      <text x="178" y="392" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.1em">REQUEST</text>
+      <rect x="248" y="385" width="16" height="8" rx="3" fill="#4a7c59"/>
+      <text x="256" y="391" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle">LS</text>
+      <text x="270" y="392" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.1em">EVENT</text>
+      <rect x="340" y="385" width="16" height="8" rx="3" fill="#b8915a"/>
+      <text x="348" y="391" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle">TB</text>
+      <text x="362" y="392" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.1em">ROW</text>
+      <rect x="432" y="385" width="16" height="8" rx="3" fill="#9c6b50"/>
+      <text x="440" y="391" fill="#ffffff" font-size="5" font-family="'Geist Mono', monospace" font-weight="700" text-anchor="middle">FL</text>
+      <text x="454" y="392" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.1em">TICKET</text>
+      <text x="700" y="392" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.1em">IN LEFT · OUT RIGHT</text>
+      <text x="144" y="415" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" font-weight="500" text-anchor="end" letter-spacing="0.14em">FLOW</text>
+      <line x1="156" y1="411" x2="176" y2="411" stroke="#4f5d75" stroke-width="1" marker-end="url(#arr-muted)"/>
+      <text x="184" y="414" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.1em">LAYER HANDOFF</text>
+      <line x1="316" y1="411" x2="336" y2="411" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr-muted)"/>
+      <text x="344" y="414" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.1em">CROSS-FEATURE</text>
+      <line x1="476" y1="411" x2="496" y2="411" stroke="#eb6c36" stroke-width="1.2" marker-end="url(#arr-accent)"/>
+      <text x="504" y="414" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" letter-spacing="0.1em">FOCAL WRITE</text>
+      </svg>
+  </div>
+</body>
+</html>

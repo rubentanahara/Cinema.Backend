@@ -5,7 +5,7 @@
          "name": "dotnet-format",
          "group": "pre-commit",
          "command": "dotnet",
-         "args": [ "format", "CleanTemplate.slnx", "--include", "${staged}" ],
+         "args": [ "format", "Cinema.slnx", "--include", "${staged}" ],
          "include": [ "**/*.cs" ]
       },
       {

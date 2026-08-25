@@ -1,15 +1,15 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY ["Directory.Packages.props", "Directory.Build.props", "./"]
-COPY ["src/CleanTemplate.Api/CleanTemplate.Api.csproj", "src/CleanTemplate.Api/"]
-COPY ["src/CleanTemplate.Application/CleanTemplate.Application.csproj", "src/CleanTemplate.Application/"]
-COPY ["src/CleanTemplate.Domain/CleanTemplate.Domain.csproj", "src/CleanTemplate.Domain/"]
-COPY ["src/CleanTemplate.Contracts/CleanTemplate.Contracts.csproj", "src/CleanTemplate.Contracts/"]
-COPY ["src/CleanTemplate.Infrastructure/CleanTemplate.Infrastructure.csproj", "src/CleanTemplate.Infrastructure/"]
-RUN dotnet restore "src/CleanTemplate.Api/CleanTemplate.Api.csproj"
+COPY ["src/Cinema.Api/Cinema.Api.csproj", "src/Cinema.Api/"]
+COPY ["src/Cinema.Application/Cinema.Application.csproj", "src/Cinema.Application/"]
+COPY ["src/Cinema.Domain/Cinema.Domain.csproj", "src/Cinema.Domain/"]
+COPY ["src/Cinema.Contracts/Cinema.Contracts.csproj", "src/Cinema.Contracts/"]
+COPY ["src/Cinema.Infrastructure/Cinema.Infrastructure.csproj", "src/Cinema.Infrastructure/"]
+RUN dotnet restore "src/Cinema.Api/Cinema.Api.csproj"
 COPY . .
-WORKDIR /src/src/CleanTemplate.Api
-RUN dotnet build "CleanTemplate.Api.csproj" -c Release -o /app/build
+WORKDIR /src/src/Cinema.Api
+RUN dotnet build "Cinema.Api.csproj" -c Release -o /app/build
 
 FROM build AS publish
 RUN dotnet publish --no-restore -c Release -o /app/publish
@@ -19,4 +19,4 @@ ENV ASPNETCORE_HTTP_PORTS=5001
 EXPOSE 5001
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "CleanTemplate.Api.dll"]
+ENTRYPOINT ["dotnet", "Cinema.Api.dll"]
