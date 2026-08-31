@@ -64,6 +64,7 @@ seed:
 
 
 migration:
+	@test -n "$(NAME)" || { echo "NAME is required: make migration MODULE=Seating NAME=AddSeatHold"; exit 1; }
 	dotnet ef migrations add $(NAME) --output-dir Infrastructure/Migrations \
 		--context $(MODULE)DbContext \
 		--project src/Modules/$(MODULE)/Cinema.$(MODULE).csproj --startup-project $(API_PROJ)

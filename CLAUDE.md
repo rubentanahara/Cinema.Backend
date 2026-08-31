@@ -31,11 +31,26 @@ make status    # smoke query: { movies { title } }
 make health    # /health
 make down      # stop the compose stack
 make clean     # down, then delete artifacts/
-make tools     # once: installs husky, which the git hooks invoke
+make tools     # once: restores dotnet-ef and husky into the local tool manifest
 ```
 
-Prefer the Makefile over raw `dotnet` invocations; it carries the solution path, the host project and
-the API URL.
+Prefer the Makefile over raw `dotnet` invocations; it carries the solution path, the host project, the
+API URL and the `--context` every `dotnet ef` command now needs.
+
+| Variable | Default | Use |
+|---|---|---|
+| `CONFIG` | `Debug` | `make CONFIG=Release` |
+| `MODULE` | `Catalog` | which module `make migration` targets |
+| `NAME` | none, required | migration name; `make migration` refuses to run without it |
+| `MODULES` | all ten | the order `make migrate` walks; narrow it with `make migrate MODULES=Seating` |
+| `ARCH` | from `uname` | used by `make image` |
+
+Two dependency chains that surprise people. **`up` depends on `image`**, so `make up` republishes the
+container every time; use `make dev` while iterating. **`clean` depends on `down`**, so `make clean`
+stops your containers as well as deleting `artifacts/`.
+
+Needs Docker running: `up`, `down`, `logs`, `clean`, `seed`, and `test`, which starts its own throwaway
+Postgres through Testcontainers. `migrate` needs the Compose database reachable on 5432.
 
 The solution uses the XML `.slnx` format, so pass `Cinema.slnx` explicitly to `dotnet` commands that
 need a solution. Build output goes to `artifacts/`, not per-project `bin/obj`.
