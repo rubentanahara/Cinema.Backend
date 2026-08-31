@@ -63,7 +63,7 @@ migrations, plus a running Docker daemon. From a fresh clone:
 ```sh
 make tools     # installs dotnet-ef and husky into the local tool manifest
 make up        # builds the API image, then starts PostgreSQL and the API
-make migrate   # creates the catalog schema on a virgin database
+make migrate   # creates all ten module schemas on a virgin database
 make seed      # three movies, so the API returns something
 ```
 

@@ -17,7 +17,7 @@ The current architecture is drawn in [docs/Diagrams/system-architecture.html](do
 ```sh
 make tools        # once: dotnet-ef and husky into the local tool manifest
 make up           # build the API image, then start PostgreSQL and the API
-make migrate      # create the catalog schema
+make migrate      # create all ten module schemas
 make seed         # three sample movies
 ```
 
@@ -28,10 +28,11 @@ loop than rebuilding the image.
 make              # build the whole solution
 make test         # unit and architecture tests
 make schema       # export the GraphQL schema to src/Api/schema.graphql
-make migrate      # apply migrations for MODULE (default Catalog)
+make migrate      # apply every module's migrations, in MODULES order
+make migration MODULE=Catalog NAME=AddMovie   # scaffold one, NAME required
 make seed         # idempotent sample data
 make image        # publish cinema-api:latest via the SDK, no Dockerfile
-make status       # query every module's status field through one endpoint
+make status       # smoke query: { movies { title } }
 make health       # /health
 make down         # stop the compose stack
 make tools        # once: installs husky, which the git hooks invoke
@@ -91,17 +92,26 @@ nothing.
 // src/Modules/Catalog/Properties/ModuleInfo.cs
 [assembly: Module("CatalogTypes")]
 
-// src/Modules/Catalog/Types/Query.cs
+// src/Modules/Catalog/Graph/CatalogQueries.cs
 [QueryType]
 public static partial class CatalogQueries
 {
-    public static CatalogStatus GetCatalogStatus() => new("catalog", DateTimeOffset.UtcNow);
+    [UseFiltering]
+    [UseSorting]
+    public static async Task<IReadOnlyList<Movie>> GetMoviesAsync(
+        QueryContext<Movie> query,
+        CatalogDbContext dbContext,
+        CancellationToken cancellationToken)
+        => await dbContext.Movies.With(query).ToListAsync(cancellationToken);
 }
 ```
 
 ```csharp
 // src/Api/Program.cs
 builder.AddGraphQL()
+    .RegisterDbContextFactory<CatalogDbContext>()
+    .AddFiltering()
+    .AddSorting()
     .AddCatalogTypes();
 ```
 

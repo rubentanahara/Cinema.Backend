@@ -156,7 +156,7 @@ ALB (ACM TLS, optional WAF)
 ```
 
 Three ALB listener rules, three target groups. A PSP webhook is an inbound machine callback, not a client
-query, so it does not pass through the GraphQL gateway.
+query, so it does not pass through the GraphQL endpoint.
 
 ### API surface
 
@@ -266,7 +266,7 @@ across modules. The client's normalized store requires it and retrofitting is ex
 ## Client
 
 - **.NET MAUI**, C# markup, no XAML. Shell navigation, MVVM, `CommunityToolkit.Mvvm`.
-- **Strawberry Shake v15** for typed codegen against the composite schema, **with its reactive store used for
+- **Strawberry Shake v15** for typed codegen against `src/Api/schema.graphql`, **with its reactive store used for
   offline**. The official `StrawberryShake.Persistence.SQLite` package is stalled at 11.3.4, so the
   store-persistence hook is hand-written against SQLite.
 - **Tickets do not live in the reactive store.** They get a dedicated durable table written at issuance. A
@@ -277,13 +277,14 @@ across modules. The client's normalized store requires it and retrofitting is ex
 - Posters are served **pre-sized** from S3 + CloudFront and consumed via `UriImageSource` with
   `CacheValidity`. No client-side image library; the resize happens once, server-side.
 - One `DelegatingHandler` attaches the bearer token and refreshes on 401.
-- `AppColors` is replaced by the token sheet in `CinepolisUI/design/01-tokens-color.png` before any screen work.
+- `AppColors` derives from the tokens in `CinepolisUI/screens/*.md`, one `Light`/`Dark` field per token, wired
+  into `AddAppThemeBinding` by `AppStyles`. Done: `src/Cinema.Maui/Resources/Styles/` in `Cinema.Maui`.
 - `rules/maui-resilience.md` needs amending: it mandates repository-level caching, which now conflicts with
   the reactive store. Two caches with independent invalidation is a defect generator.
 
 **Open risk:** Strawberry Shake codegen under full trimming on a Release iOS build is unproven and is spiked
 in week one. Fallback is raw `HttpClient` with hand-written operations plus a CI contract test against the
-gateway, which loses compile-time schema safety.
+API, which loses compile-time schema safety.
 
 ## Infrastructure
 
@@ -454,3 +455,4 @@ Notes carrying real consequences:
 | 2026-08-31 | Catalog built as the reference module: `Movie`, `catalog` schema, migration, and a `QueryContext<T>` read path verified emitting column-projected, filter-pushed SQL. The other nine modules are empty assemblies; a module gets a `DbContext` with its first entity. `/health` now maps in every environment and reports per-module migration status. Unused package declarations removed, including the two SQLite packages this log rules out. |
 | 2026-08-31 | The API runs in Compose alongside Postgres, so local matches deployed in shape. The image still comes from `dotnet publish /t:PublishContainer` with no Dockerfile; Compose consumes the tag. `make dev` remains for host-process iteration. |
 | 2026-08-31 | All ten modules now own a `DbContext`, a schema, an `EnsureSchema` migration and a health check, so `/health` reports eleven independent entries. Ten `DbContext`s make `--context` mandatory on every `dotnet ef` command. |
+| 2026-08-31 | Stale references corrected against the code: Strawberry Shake targets `src/Api/schema.graphql`, not a composite schema; the client-side fallback contract test runs against the API, not a gateway; `AppColors` is recorded as built from `CinepolisUI/screens/*.md` rather than a `01-tokens-color.png` sheet that does not exist. No decision changed. |
