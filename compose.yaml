@@ -15,14 +15,5 @@ services:
       timeout: 3s
       retries: 10
 
-  dashboard:
-    image: mcr.microsoft.com/dotnet/aspire-dashboard:latest
-    environment:
-      ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
-    ports:
-      - "18888:18888"
-      - "4317:18889"
-      - "4318:18890"
-
 volumes:
   postgres-data:

@@ -20,7 +20,7 @@ run `graphify query "<question>"` instead of reading your way across the service
 ## Commands
 
 ```sh
-make up        # docker compose: Postgres + the OTLP dashboard on :18888
+make up        # docker compose: Postgres on :5432
 make logs      # follow compose logs
 make down      # stop the compose stack
 make           # build the whole solution
@@ -58,8 +58,8 @@ There is no orchestrator. Each project runs standalone on its `Properties/launch
 gateway 5098, Catalog 5203, and so on — so nothing coordinates startup order or hands out connection
 strings. `requests/gateway.http` still points at 5100 and will not resolve until the collapse lands.
 
-Telemetry goes to the standalone dashboard container over OTLP. Nothing exports unless
-`OTEL_EXPORTER_OTLP_ENDPOINT` is set, so the app runs fine with the stack down.
+`ServiceDefaults` wires OpenTelemetry but exports nothing unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
+There is no collector in compose; point that variable at one when you want traces.
 
 ## Build gates
 
