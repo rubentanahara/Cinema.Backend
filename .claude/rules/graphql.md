@@ -49,6 +49,26 @@ Every module needs a distinct `Module(...)` name. Two modules both declaring `Mo
 Do not reach for `AddGraphQLServer()` and hand-register types. That is the pre-16 shape and it bypasses
 the generator.
 
+## Entities carrying domain events
+
+An entity inheriting `Entity` needs an `[ObjectType<T>]` extension that ignores `GetDomainEvents()`, or
+schema export dies on `Interface IDomainEvent has no fields declared`.
+
+```csharp
+// src/Modules/Catalog/Graph/MovieType.cs
+[ObjectType<Movie>]
+public static partial class MovieType
+{
+    static partial void Configure(IObjectTypeDescriptor<Movie> descriptor)
+        => descriptor.Ignore(movie => movie.GetDomainEvents());
+}
+```
+
+`GetDomainEvents()` is a method, not a property, for this reason. As a property the filter convention
+reaches it before the ignore applies and leaks `IDomainEventFilterInput` and
+`ListFilterInputTypeOfIDomainEventFilterInput` into `schema.graphql`. `SharedKernel` stays free of any
+HotChocolate reference; the ignore belongs beside the GraphQL type.
+
 ## Reads and writes are not symmetric
 
 **Reads go resolver to `IQueryable`, with no repository.** `QueryContext<T>` lives in `GreenDonut.Data`,

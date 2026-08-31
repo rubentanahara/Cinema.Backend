@@ -34,12 +34,7 @@ public sealed class CatalogQueryTests : IAsyncLifetime
 
         await dbContext.Database.MigrateAsync();
 
-        dbContext.Movies.Add(new Movie
-        {
-            Title = "Dune",
-            RuntimeMinutes = 155,
-            ReleasedOn = new DateOnly(2021, 10, 22),
-        });
+        dbContext.Movies.Add(new Movie(Guid.NewGuid(), "Dune", 155, new DateOnly(2021, 10, 22)));
 
         await dbContext.SaveChangesAsync();
     }
