@@ -10,9 +10,9 @@
 
 ## Service defaults
 
-`Cinema.ServiceDefaults` supplies OpenTelemetry, health checks, service discovery and the standard HTTP
-resilience handler. Call `builder.AddServiceDefaults()` and `app.MapDefaultEndpoints()` in every service —
-do not hand-roll any of the four.
+`Cinema.ServiceDefaults` supplies OpenTelemetry, health checks and the standard HTTP resilience handler.
+Call `builder.AddServiceDefaults()` and `app.MapDefaultEndpoints()` in every entry point — do not hand-roll
+any of the three. Service discovery was dropped with Aspire; one process has nothing to discover.
 
 `MapDefaultEndpoints` maps `/health` and `/alive` **only in Development**. A health probe returning 404 in
 another environment is that, not an outage.

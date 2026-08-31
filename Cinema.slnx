@@ -11,7 +11,6 @@
     <Project Path="Src/Services/Identity/Cinema.Identity.csproj" />
     <Project Path="Src/Services/Notifications/Cinema.Notifications.csproj" />
   </Folder>
-  <Project Path="Src/AppHost/Cinema.AppHost.csproj" />
   <Project Path="Src/Gateway/Cinema.Gateway.csproj" />
   <Project Path="Src/SharedKernel/Cinema.SharedKernel.csproj" />
   <Project Path="Src/ServiceDefaults/Cinema.ServiceDefaults.csproj" />

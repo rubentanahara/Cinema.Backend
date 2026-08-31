@@ -1,11 +1,10 @@
 SOLUTION := Cinema.slnx
-APPHOST  := Src/AppHost/Cinema.AppHost.csproj
 CONFIG   ?= Debug
 SERVICES := Catalog Seating Pricing Ordering Payments Ticketing Loyalty Concessions Identity Notifications
 GATEWAY  := http://localhost:5100
 
 .DEFAULT_GOAL := build
-.PHONY: build restore clean run dev tools format test status health down schema
+.PHONY: build restore clean up logs tools format test status health down schema
 
 build:
 	dotnet build $(SOLUTION) -c $(CONFIG)
@@ -19,11 +18,11 @@ clean: down
 tools:
 	dotnet tool restore
 
-run:
-	aspire run --project $(APPHOST)
+up:
+	docker compose up -d
 
-dev:
-	dotnet run --project $(APPHOST)
+logs:
+	docker compose logs -f
 
 schema:
 	./Scripts/export-schemas.sh
@@ -45,6 +44,4 @@ health:
 	@printf 'gateway %s\n' "$$(curl -s --max-time 3 $(GATEWAY)/health || echo unreachable)"
 
 down:
-	@pkill -f Cinema.AppHost 2>/dev/null || true
-	@docker ps -q --filter name=postgres- | xargs -r docker rm -f >/dev/null 2>&1 || true
-	@echo "stopped"
+	docker compose down
