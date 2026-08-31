@@ -2,10 +2,11 @@ SOLUTION := Cinema.slnx
 API_PROJ := src/Api/Cinema.Api.csproj
 CONFIG   ?= Debug
 MODULE   ?= Catalog
+ARCH     := $(shell uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')
 API      := http://localhost:5100
 
 .DEFAULT_GOAL := build
-.PHONY: build restore clean dev up logs down tools format test schema migrate migration status health
+.PHONY: build restore clean dev image up logs down tools format test schema migrate migration seed status health
 
 build:
 	dotnet build $(SOLUTION) -c $(CONFIG)
@@ -19,7 +20,11 @@ clean: down
 tools:
 	dotnet tool restore
 
-up:
+image:
+	dotnet publish $(API_PROJ) -c Release --os linux --arch $(ARCH) /t:PublishContainer \
+		-p:ContainerRepository=cinema-api -p:ContainerImageTag=latest
+
+up: image
 	docker compose up -d
 
 logs:
@@ -43,6 +48,15 @@ schema:
 migrate:
 	dotnet ef database update \
 		--project src/Modules/$(MODULE)/Cinema.$(MODULE).csproj --startup-project $(API_PROJ)
+
+seed:
+	@docker compose exec -T postgres psql -U cinema -d cinema -v ON_ERROR_STOP=1 -c "\
+		insert into catalog.\"Movies\" (\"Id\",\"Title\",\"RuntimeMinutes\",\"ReleasedOn\") values \
+		('11111111-1111-1111-1111-111111111111','Dune',155,'2021-10-22'), \
+		('22222222-2222-2222-2222-222222222222','Arrival',116,'2016-11-11'), \
+		('33333333-3333-3333-3333-333333333333','Sicario',121,'2015-09-18') \
+		on conflict (\"Id\") do nothing;"
+
 
 migration:
 	dotnet ef migrations add $(NAME) --output-dir Infrastructure/Migrations \

@@ -14,15 +14,22 @@ Architecture decisions are recorded in [docs/architecture-decisions.md](docs/arc
 ## Running
 
 ```sh
-make up           # docker compose: PostgreSQL on 5432
-make dev          # run the API on http://localhost:5100
+make tools        # once: dotnet-ef and husky into the local tool manifest
+make up           # build the API image, then start PostgreSQL and the API
+make migrate      # create the catalog schema
+make seed         # three sample movies
 ```
+
+The API is on http://localhost:5100. `make dev` runs it as a host process instead, for a faster inner
+loop than rebuilding the image.
 
 ```sh
 make              # build the whole solution
 make test         # unit and architecture tests
 make schema       # export the GraphQL schema to src/Api/schema.graphql
 make migrate      # apply migrations for MODULE (default Catalog)
+make seed         # idempotent sample data
+make image        # publish cinema-api:latest via the SDK, no Dockerfile
 make status       # query every module's status field through one endpoint
 make health       # /health
 make down         # stop the compose stack

@@ -17,13 +17,15 @@ run `graphify query "<question>"` instead of reading your way across the modules
 ## Commands
 
 ```sh
-make up        # docker compose: PostgreSQL on :5432
-make dev       # run the API on http://localhost:5100
+make up        # build the API image, then start PostgreSQL and the API
+make dev       # run the API as a host process instead, faster inner loop
+make image     # publish cinema-api:latest via the SDK, no Dockerfile
 make           # build the whole solution
 make test      # unit and architecture tests
 make schema    # export the GraphQL schema to src/Api/schema.graphql
 make migrate   # apply migrations; MODULE=Catalog by default
 make migration MODULE=Catalog NAME=AddMovie
+make seed      # three sample movies, idempotent
 make format    # dotnet format
 make status    # smoke query: { movies { title } }
 make health    # /health
@@ -37,6 +39,55 @@ the API URL.
 
 The solution uses the XML `.slnx` format, so pass `Cinema.slnx` explicitly to `dotnet` commands that
 need a solution. Build output goes to `artifacts/`, not per-project `bin/obj`.
+
+## Running locally
+
+Everything runs in Docker. Needs the .NET 10 SDK (pinned in `global.json`) to build the image and run
+migrations, plus a running Docker daemon. From a fresh clone:
+
+```sh
+make tools     # installs dotnet-ef and husky into the local tool manifest
+make up        # builds the API image, then starts PostgreSQL and the API
+make migrate   # creates the catalog schema on a virgin database
+make seed      # three movies, so the API returns something
+```
+
+`make up` depends on `make image`, so it republishes the container every time. There is no Dockerfile:
+`dotnet publish /t:PublishContainer` produces `cinema-api:latest` and Compose consumes that tag.
+
+`make tools` is not optional before `make migrate`. `dotnet-ef` is a **local** tool pinned at 10.0.11 in
+`.config/dotnet-tools.json`; without a restore you either get "command not found" or a globally installed
+older version running against EF Core 10 packages.
+
+Nothing migrates on startup and nothing seeds automatically, so the API comes up before its schema
+exists and says so:
+
+```sh
+curl -s localhost:5100/health   # before migrate
+{"status":"Degraded","modules":{"catalog":{"status":"Degraded","description":"1 pending migrations"}}}
+```
+
+Migrating on startup is deliberately avoided: replicas race, and a failed migration should not take the
+app down with it.
+
+```sh
+make health    # {"status":"Healthy",...}
+make status    # {"data":{"movies":[{"title":"Dune"},...]}}
+make logs      # follow both containers
+make down      # stop the stack
+```
+
+**`make dev` runs the API as a host process instead**, for a faster inner loop than rebuilding the
+image. It reads `ConnectionStrings:cinema` from `src/Api/appsettings.json`, which points at
+`localhost:5432`. Stop the containerised API first or the two fight over port 5100.
+
+`make test` needs Docker too. The integration tests start their own throwaway PostgreSQL through
+Testcontainers and never touch the Compose database.
+
+To start over, `docker compose down -v` drops the volume. If you ever delete rows from
+`__EFMigrationsHistory` by hand, `make migrate` then fails with `42P07 relation already exists`, because
+the tables survive but EF believes nothing is applied. Recover with `drop schema catalog cascade`, then
+`make migrate && make seed`.
 
 ## Structure
 
@@ -104,8 +155,10 @@ one table.
 |---|---|
 | `POST /graphql` | the only data endpoint |
 | `GET /graphql` | 301 to the Nitro IDE |
-| `GET /health` | JSON: overall status plus one entry per module |
+| `GET /health` | JSON: overall status plus one entry per registered check |
 | `GET /alive` | `Healthy` as plain text, liveness only |
+
+The container listens on 8080 and Compose publishes it as 5100, so the port is 5100 either way.
 
 ```json
 { "status": "Healthy",
@@ -113,15 +166,39 @@ one table.
                "catalog": { "status": "Healthy", "description": null } } }
 ```
 
-A module reports `Degraded` with `"3 pending migrations"` when it is behind. `/health` maps in **every**
-environment: mapping it only in Development would make the ALB health check 404 and cycle the Fargate
-task. Because it exposes module names and migration counts, keep it off the public listener and point
-the load balancer at `/alive`.
+Today that is two entries, not eleven: `self` from `AddDefaultHealthChecks()` in `ServiceDefaults`, and
+`catalog` from `AddModuleCheck<CatalogDbContext>(Schema)` in `CatalogModule`. **A module gets a health
+check when it gets a `DbContext`, not before.** The nine empty modules have nothing to probe, and a
+check that always returns healthy is the same theatre as the `*Status` queries we deleted.
+
+A module behind on migrations reports `Degraded`:
+
+```json
+{ "status": "Degraded",
+  "modules": { "catalog": { "status": "Degraded", "description": "1 pending migrations" } } }
+```
+
+**`Degraded` still returns HTTP 200.** ASP.NET Core only sends 503 for `Unhealthy`, so a load balancer
+keeps a task in service while its migrations are pending. That is defensible, since the app does serve
+traffic, but a 200 from `/health` does not mean fully ready. Read the body, not the status code.
+
+`/health` maps in **every** environment: mapping it only in Development would make the ALB health check
+404 and cycle the Fargate task. Because it exposes module names and migration counts, keep it off the
+public listener and point the load balancer at `/alive`.
 
 ## Database
 
-Compose runs one PostgreSQL 18.3 with database `cinema`, user and password both `cinema`, on 5432. The
-connection string lives under `ConnectionStrings:cinema` in `src/Api/appsettings.json`.
+Compose runs one PostgreSQL 18.3 with database `cinema`, user and password both `cinema`, on 5432.
+
+There are two connection strings for the same database, because the caller's network differs:
+
+| Caller | Host | Set in |
+|---|---|---|
+| API container | `postgres` | `ConnectionStrings__cinema` env var in `compose.yaml` |
+| `make dev`, `make migrate`, `dotnet ef` | `localhost` | `ConnectionStrings:cinema` in `src/Api/appsettings.json` |
+
+The container reaches Postgres by Compose service name; host tools go through the published port. The
+env var uses `__` because that is how .NET maps environment variables onto configuration sections.
 
 The volume mounts at `/var/lib/postgresql`, **not** `/var/lib/postgresql/data`. PostgreSQL 18 images
 store data in a major-version subdirectory and refuse to start against the old path.

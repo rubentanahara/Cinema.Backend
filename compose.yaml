@@ -15,5 +15,16 @@ services:
       timeout: 3s
       retries: 10
 
+  api:
+    image: cinema-api:latest
+    environment:
+      ConnectionStrings__cinema: "Host=postgres;Port=5432;Database=cinema;Username=cinema;Password=cinema"
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "5100:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres-data:

@@ -309,7 +309,7 @@ gateway, which loses compile-time schema safety.
 | Events | in-process handlers, outbox table | same, plus SQS when a consumer needs independent retry |
 | Auth | Cognito (real user pool) | Cognito |
 | Telemetry | OTLP to any collector | ADOT → CloudWatch / X-Ray |
-| Compute | `make dev` | 1 Fargate task behind an ALB |
+| Compute | `make up`, API container in Compose | 1 Fargate task behind an ALB |
 
 Connection-string-per-environment keeps module code byte-identical across both.
 
@@ -451,3 +451,4 @@ Notes carrying real consequences:
 | 2026-08-31 | Hot Chocolate 16 data-access constraints recorded: `QueryContext<T>` replaces `[UseProjection]` and mixing them fails the build via HC0099; `DbContextFactory` over scoped `DbContext`; per-module migrations history table. |
 | 2026-08-31 | Infrastructure and delivery restated for one deployable: ALB fronts a single Fargate task, no ECS Service Connect, one RDS instance, one CI workflow publishing via the SDK container target. `make schema` diff replaces composition as the PR gate. |
 | 2026-08-31 | Catalog built as the reference module: `Movie`, `catalog` schema, migration, and a `QueryContext<T>` read path verified emitting column-projected, filter-pushed SQL. The other nine modules are empty assemblies; a module gets a `DbContext` with its first entity. `/health` now maps in every environment and reports per-module migration status. Unused package declarations removed, including the two SQLite packages this log rules out. |
+| 2026-08-31 | The API runs in Compose alongside Postgres, so local matches deployed in shape. The image still comes from `dotnet publish /t:PublishContainer` with no Dockerfile; Compose consumes the tag. `make dev` remains for host-process iteration. |
