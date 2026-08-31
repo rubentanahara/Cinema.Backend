@@ -11,7 +11,7 @@ the deployment target, not yet built. The MAUI client is a separate repository, 
 **This shape is being collapsed to a modular monolith.** Aspire is already removed. The ten service
 projects and the Fusion gateway are next; they hold 25 lines of boilerplate each and no domain logic.
 
-Architecture decisions live in `Docs/architecture-decisions.md`. Read it before proposing a structural
+Architecture decisions live in `docs/architecture-decisions.md`. Read it before proposing a structural
 change — most of them are already settled there, with the reasoning.
 
 `graphify-out/` holds a knowledge graph of this repo. For "where does X live" or "how does Y work",
@@ -26,7 +26,7 @@ make down      # stop the compose stack
 make           # build the whole solution
 make test      # dotnet test
 make format    # dotnet format
-make schema    # export each subgraph's SDL to Src/Services/<Service>/schema.graphql
+make schema    # export each subgraph's SDL to src/Services/<Service>/schema.graphql
 make status    # federated status query through the gateway
 make health    # gateway /health
 make clean     # down, then delete artifacts/
@@ -40,23 +40,23 @@ need a solution. Build output goes to `artifacts/`, not per-project `bin/obj`.
 
 ## Structure
 
-Folder names are Sentence case — `Src/`, `Docs/`, `Requests/`, `Src/Services/Catalog/` — except tooling
+Folder names are Sentence case — `src/`, `docs/`, `requests/`, `src/Services/Catalog/` — except tooling
 directories that must keep their own names (`.husky`, `.config`, `artifacts`). Every path in
 `Cinema.slnx`, `Makefile`, `aspire.config.json` and `Scripts/` is case-exact; macOS will not tell you
 when it drifts, Linux CI will.
 
 ```
-Src/Gateway           Fusion gateway, port 5100, loads gateway.far
-Src/ServiceDefaults   OpenTelemetry, health checks, resilience, service discovery
-Src/SharedKernel      Entity, IDomainEvent
-Src/Services/*        the ten services
-Requests/gateway.http federated query and health probes
+src/Gateway           Fusion gateway, port 5100, loads gateway.far
+src/ServiceDefaults   OpenTelemetry, health checks, resilience, service discovery
+src/SharedKernel      Entity, IDomainEvent
+src/Services/*        the ten services
+requests/gateway.http federated query and health probes
 Scripts/              export-schemas.sh
 ```
 
 There is no orchestrator. Each project runs standalone on its `Properties/launchSettings.json` port —
 gateway 5098, Catalog 5203, and so on — so nothing coordinates startup order or hands out connection
-strings. `Requests/gateway.http` still points at 5100 and will not resolve until the collapse lands.
+strings. `requests/gateway.http` still points at 5100 and will not resolve until the collapse lands.
 
 Telemetry goes to the standalone dashboard container over OTLP. Nothing exports unless
 `OTEL_EXPORTER_OTLP_ENDPOINT` is set, so the app runs fine with the stack down.

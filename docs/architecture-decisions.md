@@ -146,7 +146,7 @@ There is exactly **one** gateway: `Cinema.Gateway`, the Fusion gateway, local po
 load balancer, not a gateway, and exists only in AWS. AWS API Gateway, YARP and Ocelot are rejected above.
 
 Composition is wired through the **local, no-cloud option**: `nitro fusion compose` produces
-`Src/Gateway/gateway.far`, which the gateway loads with `AddFileSystemConfiguration`. Nitro's hosted registry
+`src/Gateway/gateway.far`, which the gateway loads with `AddFileSystemConfiguration`. Nitro's hosted registry
 was the alternative and is not adopted; its breaking-change detection and atomic rollout are bought back in
 CI by running composition on every PR.
 
@@ -156,7 +156,7 @@ In `HotChocolate.Fusion.Aspire` 16.6.1 both Aspire composition entry points are 
 referencing all ten subgraphs.
 
 Changing a subgraph's types does not change the composed graph. `make schema` exports each subgraph's SDL to
-`Src/Services/<Service>/schema.graphql`; `gateway.far` is recomposed from those. A schema change that skips
+`src/Services/<Service>/schema.graphql`; `gateway.far` is recomposed from those. A schema change that skips
 recomposition leaves the gateway serving the previous graph.
 
 ### Required edge hardening
@@ -171,8 +171,9 @@ recomposition leaves the gateway serving the previous graph.
 
 ## Conventions
 
-- Folder names are **Sentence case**: `Src/`, `Docs/`, `Requests/`, `Src/Services/Catalog/`. Tooling
-  directories keep their required names (`.husky`, `.config`, `artifacts`).
+- **Top-level folders are lowercase**: `src/`, `docs/`, `requests/`. Directories inside `src/` keep
+  Sentence case: `src/Services/Catalog/`, `src/ServiceDefaults/`. Tooling directories keep their required
+  names (`.husky`, `.config`, `artifacts`).
 - **Only the gateway has a pinned local port**, 5100, set in `AppHost.cs` via
   `.WithEndpoint("http", e => e.Port = 5100)`. The ten subgraphs take random Aspire ports on every run. One
   pinned public entry point is what keeps a checked-in `.http` file valid, and every client query goes
@@ -398,3 +399,4 @@ Notes carrying real consequences:
 | 2026-08-31 | Gateway composition is wired, no longer deferred: local `nitro fusion compose` → `Src/Gateway/gateway.far` → `AddFileSystemConfiguration`, gateway in the AppHost run graph. Nitro's hosted registry not adopted; CI composition covers breaking-change detection. |
 | 2026-08-31 | Per-subgraph port pinning (5101-5110) dropped. Only the gateway is pinned, at 5100; every client query is federated through it, so `Requests/` holds one file rather than ten. |
 | 2026-08-31 | Corrected the generated registration method: `AddTypes()`, not `Add<Service>Types()`. The documented form did not compile against Hot Chocolate 16.6.1. |
+| 2026-08-31 | Folder convention reversed: top-level folders are lowercase (`src/`, `docs/`, `requests/`); directories inside `src/` keep Sentence case. Supersedes the Sentence-case rule recorded earlier the same day. |

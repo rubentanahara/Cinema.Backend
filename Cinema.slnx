@@ -1,17 +1,17 @@
 <Solution>
   <Folder Name="/services/">
-    <Project Path="Src/Services/Catalog/Cinema.Catalog.csproj" />
-    <Project Path="Src/Services/Seating/Cinema.Seating.csproj" />
-    <Project Path="Src/Services/Pricing/Cinema.Pricing.csproj" />
-    <Project Path="Src/Services/Ordering/Cinema.Ordering.csproj" />
-    <Project Path="Src/Services/Payments/Cinema.Payments.csproj" />
-    <Project Path="Src/Services/Ticketing/Cinema.Ticketing.csproj" />
-    <Project Path="Src/Services/Loyalty/Cinema.Loyalty.csproj" />
-    <Project Path="Src/Services/Concessions/Cinema.Concessions.csproj" />
-    <Project Path="Src/Services/Identity/Cinema.Identity.csproj" />
-    <Project Path="Src/Services/Notifications/Cinema.Notifications.csproj" />
+    <Project Path="src/Services/Catalog/Cinema.Catalog.csproj" />
+    <Project Path="src/Services/Seating/Cinema.Seating.csproj" />
+    <Project Path="src/Services/Pricing/Cinema.Pricing.csproj" />
+    <Project Path="src/Services/Ordering/Cinema.Ordering.csproj" />
+    <Project Path="src/Services/Payments/Cinema.Payments.csproj" />
+    <Project Path="src/Services/Ticketing/Cinema.Ticketing.csproj" />
+    <Project Path="src/Services/Loyalty/Cinema.Loyalty.csproj" />
+    <Project Path="src/Services/Concessions/Cinema.Concessions.csproj" />
+    <Project Path="src/Services/Identity/Cinema.Identity.csproj" />
+    <Project Path="src/Services/Notifications/Cinema.Notifications.csproj" />
   </Folder>
-  <Project Path="Src/Gateway/Cinema.Gateway.csproj" />
-  <Project Path="Src/SharedKernel/Cinema.SharedKernel.csproj" />
-  <Project Path="Src/ServiceDefaults/Cinema.ServiceDefaults.csproj" />
+  <Project Path="src/Gateway/Cinema.Gateway.csproj" />
+  <Project Path="src/SharedKernel/Cinema.SharedKernel.csproj" />
+  <Project Path="src/ServiceDefaults/Cinema.ServiceDefaults.csproj" />
 </Solution>

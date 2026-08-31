@@ -2,7 +2,7 @@
 
 - **GraphQL at the client edge, REST between services.** Service-to-service GraphQL couples every service to
   the gateway's type system.
-- The Fusion gateway (`Src/Gateway`, port 5100) is the only public entry point and the only gateway. No
+- The Fusion gateway (`src/Gateway`, port 5100) is the only public entry point and the only gateway. No
   second routing layer.
 - **Every subgraph validates the JWT itself** against Cognito's JWKS. The gateway propagates the
   `Authorization` header; it does not vouch.
@@ -54,7 +54,7 @@ Composition is wired through a checked-in `gateway.far` loaded by `AddFileSystem
 subgraph's types is not enough — the composed artifact has to be rebuilt or the gateway serves the old graph.
 
 ```sh
-make schema   # runs each subgraph, writes Src/Services/<Service>/schema.graphql
+make schema   # runs each subgraph, writes src/Services/<Service>/schema.graphql
 ```
 
 Then recompose `gateway.far` from those SDL files. Schema composition failure is the breaking-change gate:

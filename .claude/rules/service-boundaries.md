@@ -1,6 +1,6 @@
 # Service boundaries
 
-Ten services, each owning one database. `Docs/architecture-decisions.md` carries the reasoning; this file
+Ten services, each owning one database. `docs/architecture-decisions.md` carries the reasoning; this file
 carries the rules that follow from it.
 
 - **A service never reads another service's database.** No shared connection string, no cross-schema query,

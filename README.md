@@ -4,7 +4,7 @@ Cinema ticketing platform — ten microservices behind a federated GraphQL gatew
 locally by Aspire and deployed to AWS on demand.
 
 The mobile client lives in [Cinema.Maui](https://github.com/rubentanahara/Cinema.Maui).
-Architecture decisions are recorded in [Docs/architecture-decisions.md](Docs/architecture-decisions.md).
+Architecture decisions are recorded in [docs/architecture-decisions.md](docs/architecture-decisions.md).
 
 ## Requirements
 
@@ -31,14 +31,14 @@ make tools        # once: installs husky, which the git hooks invoke
 ```
 
 Services are pinned to ports **5101-5110** in `AppHost.cs`, in the order listed under Structure, so the
-files in `Requests/` stay valid across runs.
+files in `requests/` stay valid across runs.
 
 Build output goes to `artifacts/` (`UseArtifactsOutput`), not per-project `bin/obj`.
 
 ## Structure
 
 ```
-Src/
+src/
   AppHost/          Aspire orchestration — PostgreSQL + the ten services
   ServiceDefaults/  OpenTelemetry, health checks, resilience, service discovery
   SharedKernel/     Entity, IDomainEvent
