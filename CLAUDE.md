@@ -4,68 +4,73 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 ## Project
 
-Cinema ticketing platform: ten .NET 10 microservices, each owning its own database and exposing a
-GraphQL subgraph, composed by a Hot Chocolate Fusion gateway. Postgres runs in Docker Compose; AWS is
-the deployment target, not yet built. The MAUI client is a separate repository, `Cinema.Maui`.
-
-**This shape is being collapsed to a modular monolith.** Aspire is already removed. The ten service
-projects and the Fusion gateway are next; they hold 25 lines of boilerplate each and no domain logic.
+Cinema ticketing platform: a .NET 10 modular monolith. Ten modules, each its own assembly, composed by
+one host (`src/Api`) exposing a single GraphQL schema. PostgreSQL runs in Docker Compose. AWS is the
+deployment target, not yet built. The MAUI client is a separate repository, `Cinema.Maui`.
 
 Architecture decisions live in `docs/architecture-decisions.md`. Read it before proposing a structural
 change — most of them are already settled there, with the reasoning.
 
 `graphify-out/` holds a knowledge graph of this repo. For "where does X live" or "how does Y work",
-run `graphify query "<question>"` instead of reading your way across the services.
+run `graphify query "<question>"` instead of reading your way across the modules.
 
 ## Commands
 
 ```sh
-make up        # docker compose: Postgres on :5432
-make logs      # follow compose logs
-make down      # stop the compose stack
+make up        # docker compose: PostgreSQL on :5432
+make dev       # run the API on http://localhost:5100
 make           # build the whole solution
-make test      # dotnet test
+make test      # unit and architecture tests
+make schema    # export the GraphQL schema to src/Api/schema.graphql
 make format    # dotnet format
-make schema    # export each subgraph's SDL to src/Services/<Service>/schema.graphql
-make status    # federated status query through the gateway
-make health    # gateway /health
+make status    # query every module's status field through one endpoint
+make health    # /health
+make down      # stop the compose stack
 make clean     # down, then delete artifacts/
 make tools     # once: installs husky, which the git hooks invoke
 ```
 
-Prefer the Makefile over raw `dotnet` invocations; it carries the solution path and the gateway URL.
+Prefer the Makefile over raw `dotnet` invocations; it carries the solution path, the host project and
+the API URL.
 
 The solution uses the XML `.slnx` format, so pass `Cinema.slnx` explicitly to `dotnet` commands that
 need a solution. Build output goes to `artifacts/`, not per-project `bin/obj`.
 
 ## Structure
 
-Folder names are Sentence case — `src/`, `docs/`, `requests/`, `src/Services/Catalog/` — except tooling
-directories that must keep their own names (`.husky`, `.config`, `artifacts`). Every path in
-`Cinema.slnx`, `Makefile`, `aspire.config.json` and `Scripts/` is case-exact; macOS will not tell you
-when it drifts, Linux CI will.
+Top-level folders are lowercase (`src/`, `docs/`, `requests/`); directories inside `src/` are Sentence
+case.
 
 ```
-src/Gateway           Fusion gateway, port 5100, loads gateway.far
-src/ServiceDefaults   OpenTelemetry, health checks, resilience, service discovery
-src/SharedKernel      Entity, IDomainEvent
-src/Services/*        the ten services
-requests/gateway.http federated query and health probes
-Scripts/              export-schemas.sh
+src/Api              host: GraphQL endpoint, health checks, module registration
+src/ServiceDefaults  OpenTelemetry, health checks, HTTP resilience
+src/SharedKernel     Entity, IDomainEvent
+src/Modules/*        the ten modules, one assembly each
+tests/Architecture   module boundary rules
+requests/api.http    status query and health probes
 ```
 
-There is no orchestrator. Each project runs standalone on its `Properties/launchSettings.json` port —
-gateway 5098, Catalog 5203, and so on — so nothing coordinates startup order or hands out connection
-strings. `requests/gateway.http` still points at 5100 and will not resolve until the collapse lands.
+One process on port 5100, set in `src/Api/Properties/launchSettings.json`.
 
-`ServiceDefaults` wires OpenTelemetry but exports nothing unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
-There is no collector in compose; point that variable at one when you want traces.
+## Modules
+
+A module is its own assembly. That is the whole point of the layout: `internal` is a real boundary
+between modules, enforced by the compiler rather than by discipline. No module project references
+another module project.
+
+`tests/Architecture` asserts that no module assembly depends on another. It is not decoration — a
+boundary with no test is a folder name. If you add a legitimate cross-module dependency, it goes
+through a contract that both sides reference, never a direct project reference.
+
+Hot Chocolate's source generator names its registration method after the module's
+`[assembly: Module("<Name>Types")]` attribute, so `src/Api/Program.cs` chains `AddCatalogTypes()`
+through `AddNotificationsTypes()`. Two modules declaring the same `Module(...)` name will collide.
 
 ## Build gates
 
 `TreatWarningsAsErrors` and `EnforceCodeStyleInBuild` are on, with StyleCop.Analyzers and
 SonarAnalyzer.CSharp on every project. A style complaint, an analyzer complaint, or a known package
-vulnerability (`NU1902`) fails the build. Run `dotnet build Cinema.slnx` before claiming a change works.
+vulnerability (`NU1902`) fails the build. Run `make` before claiming a change works.
 
 Package versions are managed centrally: add a `PackageVersion` to `Directory.Packages.props` and a
 `PackageReference` without a `Version` in the csproj.
@@ -73,10 +78,18 @@ Package versions are managed centrally: add a `PackageVersion` to `Directory.Pac
 Git hooks (`.husky/`): pre-commit runs `dotnet format` over staged `.cs` files and `gitleaks protect`;
 commit-msg enforces Conventional Commits with a subject of 1-88 characters.
 
+## Containers
+
+There is no Dockerfile and none is wanted. The SDK builds the image:
+
+```sh
+dotnet publish src/Api/Cinema.Api.csproj -c Release --os linux --arch arm64 /t:PublishContainer
+```
+
 ## Rules
 
-Read these before adding a service, a schema type, an event, or a saga step.
+Read these before adding a module, a schema type, an event, or a saga step.
 
-@.claude/rules/service-boundaries.md
-@.claude/rules/graphql-federation.md
+@.claude/rules/module-boundaries.md
+@.claude/rules/graphql.md
 @.claude/rules/service-conventions.md

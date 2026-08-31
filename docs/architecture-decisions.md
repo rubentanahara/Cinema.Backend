@@ -27,14 +27,14 @@ Single market: **United States**. USD, en-US, 6 timezones.
 
 | # | Decision | Rationale |
 |---|---|---|
-| 1 | **Microservices**, not a modular monolith | chosen for hands-on distributed-systems experience; accepted with full knowledge of the coordination cost |
-| 2 | **10 services** | granularity by transaction boundary and change cadence, not by counting nouns |
-| 3 | **Database per service**, no shared database | 10 Aurora Serverless v2 clusters in AWS; one Postgres container with 10 databases locally |
+| 1 | **Modular monolith**, not microservices | one deployable unit, module boundaries enforced by the compiler and an architecture test. The project's goal is full-stack breadth; ten services spend that budget on coordination instead |
+| 2 | **10 modules**, one assembly each | granularity by transaction boundary and change cadence, not by counting nouns. Same boundaries microservices would have drawn, enforced by `internal` instead of a network hop |
+| 3 | **One database, one schema per module** | `catalog.movies`, `ordering.orders`. No foreign key or join crosses a schema line, so a module stays extractable |
 | 4 | **GraphQL at the client edge, REST between services** | GraphQL is an edge technology; service-to-service GraphQL couples every service to the gateway's type system |
-| 5 | **Hot Chocolate Fusion 16 federation** | subgraph owns its slice; composition failure in CI is the breaking-change gate. A BFF gateway would become the deploy bottleneck microservices exist to avoid |
-| 6 | **Saga orchestration, hand-rolled**, coordinator in `ordering` | a 6-step choreographed saga exists in no single file and is undebuggable |
+| 5 | **One GraphQL schema**, no federation | one process has nothing to federate. `src/Api/schema.graphql` is checked in, so a breaking change is a git diff rather than a composition step |
+| 6 | **Transaction first, saga only for payments** | committing a hold, writing an order and issuing a ticket is one database transaction. The PSP is genuinely remote, so that step alone keeps explicit compensation |
 | 7 | **Transactional outbox → EventBridge → SQS per consumer** + DLQ | `PaymentCaptured` must issue tickets, award points, and email a receipt even if the process dies |
-| 8 | **ECS Fargate** | not EKS (teaches Kubernetes, a different skill), not Lambda (SSE needs long-lived connections; chained cold starts) |
+| 8 | **ECS Fargate**, one task | not EKS (teaches Kubernetes, a different skill), not Lambda (`graphql-ws` needs long-lived connections; chained cold starts). App Runner is closed to new customers |
 | 9 | **CDK in C#** | one language across the repo; accepts that CDK examples are TypeScript-first |
 | 10 | **Monorepo for services**, separate mobile repo | independent deployability is a property of the pipeline, not the repository |
 
@@ -96,20 +96,20 @@ Postgres already solves).
 
 **Seat map only.** One realtime surface; everything else is request/response.
 
-Delivered by Fusion's **subgraph subscription passthrough over SSE** — `seating` solely owns seat events, so
-the gateway consumes its stream directly. **No message broker.** Broker-backed Federated Event Streams
-(NATS/Kafka/SQS/Redis) are not needed; Redis Pub/Sub and SQS cannot do resumable streams regardless.
+`seating` owns seat events and the API serves the subscription directly over `graphql-ws` on
+WebSocket. **No message broker.** With one process there is no cross-service stream to bridge, and
+Redis Pub/Sub and SQS cannot do resumable streams regardless.
 
-Gateway→subgraph transport is SSE. Client→gateway is `graphql-ws` over WebSocket.
+A second Fargate task would break this: in-memory subscription state is per-process. Scaling out means
+a backplane, which is the point at which the seat map becomes the reason to extract `seating`.
 
 ## Identity
 
 - **Cognito user pool, native SRP flows (`USER_SRP_AUTH`). No Hosted UI.** Login and signup are native MAUI
   screens. The corpus's worst trust failure (`B4`) is a hosted-webview handoff showing `appleid.apple.com`
   while rendering a signup form — adopting Hosted UI would inherit the defect being fixed.
-- **Every subgraph validates the JWT itself** against Cognito's JWKS. The gateway propagates the
-  `Authorization` header; it does not vouch. A vouching gateway makes anything reaching the private subnet
-  trusted.
+- **The API validates every JWT itself** against Cognito's JWKS on each request. No component vouches for
+  another, so there is no trusted-network assumption to violate later.
 - `identity` owns profile and preferences keyed by Cognito `sub`. Cognito holds credentials only.
 - **Guest checkout supported.** `Order.UserId` is nullable with a required contact email; tickets are
   delivered by QR link; a claim path attaches the purchase to an account created later.
@@ -119,45 +119,35 @@ Gateway→subgraph transport is SSE. Client→gateway is `graphql-ws` over WebSo
 
 ## Edge and gateway
 
-The **Fusion gateway is the API gateway**. It is the single public entry point, routes each field to the
-owning subgraph, propagates auth, and composes the response. Nothing else fills that role.
+`Cinema.Api` is the single public entry point. The ALB terminates TLS and forwards to it; nothing
+routes between components because there is only one.
 
 | Candidate | Verdict | Reason |
 |---|---|---|
 | **AWS API Gateway** | rejected | GraphQL is one `POST /graphql`; all routing lives in the request body, so path/method routing has nothing to act on. Its WebSocket API terminates and reframes connections around a route-selection expression rather than passing them through, which `graphql-ws` needs. Caching and request validation are meaningless against a GraphQL document. It cannot replace the ALB either — private integration still needs VPC Link to an ALB/NLB or Cloud Map |
-| **YARP** | rejected for now | there are three static routes and the ALB does them declaratively, with per-target health checks and no code to deploy. YARP earns its place with per-request transformation, dynamic destination discovery, session affinity, or strangler-fig migration — none of which apply. The Fusion gateway is a library inside a normal ASP.NET app, so YARP middleware can be added to that same process later if a real need appears |
-| **Ocelot** | rejected | a REST-oriented API gateway whose aggregation feature is a primitive form of what Fusion does properly. Adopting it would mean two overlapping gateway abstractions |
+| **YARP** | rejected for now | there are three static routes and the ALB does them declaratively, with per-target health checks and no code to deploy. YARP earns its place with per-request transformation, dynamic destination discovery, session affinity, or strangler-fig migration, none of which apply. It is middleware, so it can be added to the API process later if a real need appears |
+| **Ocelot** | rejected | a REST-oriented API gateway. Its aggregation feature solves a problem one GraphQL endpoint does not have |
 
 ### Edge topology
 
 ```
 ALB (ACM TLS, optional WAF)
-  /graphql       -> Fusion gateway  -> subgraphs via ECS Service Connect
-  /webhooks/psp  -> payments        (inbound, signature-verified)
-  /redemptions   -> ticketing       (door scanner, client_credentials)
+  /graphql       -> Cinema.Api
+  /webhooks/psp  -> Cinema.Api  (inbound, signature-verified)
+  /redemptions   -> Cinema.Api  (door scanner, client_credentials)
 ```
 
 Three ALB listener rules, three target groups. A PSP webhook is an inbound machine callback, not a client
 query, so it does not pass through the GraphQL gateway.
 
-### Gateway composition
+### API surface
 
-There is exactly **one** gateway: `Cinema.Gateway`, the Fusion gateway, local port **5100**. The ALB is a
-load balancer, not a gateway, and exists only in AWS. AWS API Gateway, YARP and Ocelot are rejected above.
+One deployable unit, `Cinema.Api`, local port **5100**, serving `/graphql`, `/health` and `/alive`. The
+ALB is a load balancer, not a gateway, and exists only in AWS. AWS API Gateway, YARP and Ocelot remain
+rejected above. There is nothing left to route between.
 
-Composition is wired through the **local, no-cloud option**: `nitro fusion compose` produces
-`src/Gateway/gateway.far`, which the gateway loads with `AddFileSystemConfiguration`. Nitro's hosted registry
-was the alternative and is not adopted; its breaking-change detection and atomic rollout are bought back in
-CI by running composition on every PR.
-
-In `HotChocolate.Fusion.Aspire` 16.6.1 both Aspire composition entry points are Nitro-branded —
-`AddGraphQLOrchestrator` → `AddNitroComposition` on the builder, `WithGraphQLSchemaComposition` →
-`WithNitroComposition` on the gateway resource. The AppHost uses both, and the gateway is in the run graph,
-referencing all ten subgraphs.
-
-Changing a subgraph's types does not change the composed graph. `make schema` exports each subgraph's SDL to
-`src/Services/<Service>/schema.graphql`; `gateway.far` is recomposed from those. A schema change that skips
-recomposition leaves the gateway serving the previous graph.
+`src/Api/schema.graphql` is exported by `make schema` and checked in. Reviewing its diff is the
+breaking-change gate that schema composition used to provide.
 
 ### Required edge hardening
 
@@ -167,18 +157,15 @@ recomposition leaves the gateway serving the previous graph.
 | **Persisted operation allowlist** | gateway — clients send a document hash, not a document. Removes arbitrary-query attacks and cuts request size |
 | Rate limiting | ASP.NET rate limiting in the gateway, or AWS WAF on the ALB |
 | TLS, WAF | ALB + ACM |
-| Authentication | JWT validated by each subgraph; the gateway propagates the header and does not vouch |
+| Authentication | JWT validated by the API on every request |
 
 ## Conventions
 
 - **Top-level folders are lowercase**: `src/`, `docs/`, `requests/`. Directories inside `src/` keep
   Sentence case: `src/Services/Catalog/`, `src/ServiceDefaults/`. Tooling directories keep their required
   names (`.husky`, `.config`, `artifacts`).
-- **Only the gateway has a pinned local port**, 5100, set in `AppHost.cs` via
-  `.WithEndpoint("http", e => e.Port = 5100)`. The ten subgraphs take random Aspire ports on every run. One
-  pinned public entry point is what keeps a checked-in `.http` file valid, and every client query goes
-  through the gateway anyway; per-subgraph pinning bought nothing. Reach a subgraph directly through the
-  Aspire dashboard.
+- **The API runs on local port 5100**, set in `src/Api/Properties/launchSettings.json`, so the checked-in
+  `requests/api.http` stays valid across runs.
 
 ## Domain model
 
@@ -218,26 +205,26 @@ screen.
 capture. This makes the corpus defect `B5` (service fee first revealed at the final total) structurally
 impossible: the number shown is the number captured, or the quote expired and the user is told.
 
-### Federation ownership
+### Module ownership
 
-| Type | Owner | Extended by | Key |
-|---|---|---|---|
-| `Movie` | catalog | — | `id` |
-| `Cinema` | catalog | concessions (`.menu`) | `id` |
-| `Showtime` | catalog | seating (`.seatMap`), pricing (`.ticketPrices`) | `id` |
-| `Order` | ordering | ticketing (`.tickets`), payments (`.payment`) | `id` |
-| `User` | identity | ordering (`.orders`), loyalty (`.membership`) | `id` |
-| `Ticket` | ticketing | — | `id` |
+A field belongs to the module that owns its data. A resolver needing another module's data goes through
+that module's contract, never its `DbContext`.
 
-**Seat map layout lives in `seating`**, denormalized from an `AuditoriumLayoutChanged` event. A gateway join
-across 200 seats on the most latency-sensitive screen is the distributed-monolith answer.
+| Type | Owner | Extended by |
+|---|---|---|
+| `Movie`, `Cinema`, `Showtime` | catalog | concessions, seating, pricing |
+| `Order` | ordering | ticketing, payments |
+| `User` | identity | ordering, loyalty |
+| `Ticket` | ticketing | — |
 
-**Every `@lookup` is batched.** A 40-showtime list resolves prices in one call to `pricing` with 40 keys.
-Unbatched lookups do not show up until the list gets long, and then they kill the graph.
+**Seat map layout lives in `seating`**, denormalized from an `AuditoriumLayoutChanged` event.
 
-**Relay Global Object Identification is mandatory in every subgraph** (`AddGlobalObjectIdentification()`),
-with ids unique across services. This is required by the client's normalized store and is expensive to
-retrofit into 10 schemas.
+**Every cross-module read is batched behind a DataLoader.** A 40-showtime list resolves prices in one
+call into `pricing`, not forty. In-process makes N+1 cheap enough to hide in development and expensive
+enough to hurt under load.
+
+**Relay Global Object Identification is mandatory** (`AddGlobalObjectIdentification()`), with ids unique
+across modules. The client's normalized store requires it and retrofitting is expensive.
 
 ## Client
 
@@ -263,7 +250,7 @@ gateway, which loses compile-time schema safety.
 
 ## Infrastructure
 
-- **Laptop-first.** Aspire runs the full system locally. AWS is deployed on demand and destroyed after.
+- **Laptop-first.** `make up` and `make dev` run the whole system locally. AWS is deployed on demand and destroyed after.
   Ephemeral environments enforce IaC discipline: drift and hand-clicked fixes surface the same week.
 - **Persistent cloud floor ~$1/month** — Cognito (free at this scale), ECR, S3, SSM Parameter Store
   (free; Secrets Manager is $0.40/secret/month), CDK bootstrap, GitHub OIDC role.
@@ -279,15 +266,16 @@ gateway, which loses compile-time schema safety.
 
 ### Local versus deployed
 
-| Concern | Local (Aspire) | AWS (CDK) |
+| Concern | Local | AWS |
 |---|---|---|
-| Postgres | 1 container, 10 databases | 10 Aurora Serverless v2 clusters |
-| Schema composition | Aspire pulls schema endpoints at startup | `nitro fusion compose` in CI → `.far` → S3 |
-| Events | LocalStack EventBridge + SQS | EventBridge + SQS |
+| Postgres | 1 container, 1 database, schema per module | 1 RDS instance, schema per module |
+| Schema | `make schema`, committed | same artifact, no runtime step |
+| Events | in-process handlers, outbox table | same, plus SQS when a consumer needs independent retry |
 | Auth | Cognito (real user pool) | Cognito |
-| Telemetry | Aspire dashboard | ADOT → CloudWatch / X-Ray |
+| Telemetry | OTLP to any collector | ADOT → CloudWatch / X-Ray |
+| Compute | `make dev` | 1 Fargate task behind an ALB |
 
-Connection-string-per-service keeps service code byte-identical across both.
+Connection-string-per-environment keeps module code byte-identical across both.
 
 ## Delivery
 
@@ -310,7 +298,7 @@ Connection-string-per-service keeps service code byte-identical across both.
 | Per-service integration | **Testcontainers, real Postgres** |
 | Architecture | NetArchTest |
 | REST contracts | per boundary |
-| Saga E2E | Aspire-hosted, happy path **and every compensation path** |
+| Saga E2E | `WebApplicationFactory` + Testcontainers, happy path **and every compensation path** |
 | Seat contention | k6 / NBomber |
 | Device UI | Appium, **local only**, ~5 smoke flows, never a required check |
 
@@ -322,8 +310,8 @@ ticket render in airplane mode; account deletion. `AutomationId` is mandatory on
 
 ### Observability and SLOs
 
-OpenTelemetry end to end — one trace from a MAUI tap through gateway, subgraphs, outbox and consumer.
-Aspire dashboard locally, ADOT → CloudWatch/X-Ray deployed.
+OpenTelemetry end to end — one trace from a MAUI tap through the API, the outbox and its consumer.
+Any OTLP collector locally, ADOT → CloudWatch/X-Ray deployed. Nothing exports unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
 
 | SLO | Target |
 |---|---|
@@ -345,7 +333,7 @@ Aspire dashboard locally, ADOT → CloudWatch/X-Ray deployed.
 
 | Phase | Delivers |
 |---|---|
-| 0 | Walking skeleton: Aspire AppHost, ServiceDefaults, `catalog` on real Postgres, gateway, composition gate, CDK skeleton, OTel, design tokens, MAUI hello-world through the gateway, deployed once to AWS |
+| 0 | Walking skeleton: Compose Postgres, `Cinema.Api` with ten modules, `ServiceDefaults`, module boundary test, `catalog` on real Postgres, OTel, design tokens, MAUI hello-world against the API, deployed once to AWS |
 | 1 | Browse — catalog, cartelera, detail, horarios. Read-only, no auth |
 | 2 | Identity — Cognito native SRP, auth screens, guest support |
 | 3 | Booking spine — seating, pricing, ordering, payments, ticketing, the saga, seat map + subscription, PSP simulator, contention tests |
@@ -368,26 +356,26 @@ that phase. Eight PRDs written upfront would be stale by phase 3.
 | Package | Version |
 |---|---|
 | .NET SDK | 10.0.302 |
-| Aspire | 13.5.2 |
-| Hot Chocolate / Fusion | 16.6.1 |
+| Hot Chocolate | 16.6.1 |
 | HotChocolate.Types.Analyzers | 16.6.1 |
 | OpenTelemetry | 1.18.0 |
 | Npgsql.EntityFrameworkCore.PostgreSQL | 10.0.3 |
 | Strawberry Shake | 15.x |
-| PostgreSQL (Aspire default image) | 18.3 |
+| PostgreSQL (Compose image) | 18.3 |
 
 Notes carrying real consequences:
 
-- OpenTelemetry **1.14.0**, the version Aspire 13.5's template pins, carries known moderate advisories
-  (unbounded OTLP response bodies; patched in 1.15.2). Pinned to 1.18.0.
+- OpenTelemetry **1.14.0** carries known moderate advisories (unbounded OTLP response bodies; patched in
+  1.15.2). Pinned to 1.18.0.
 - Hot Chocolate's `[QueryType]` source generator emits a per-assembly `AddTypes()`; it must be called
   explicitly, as `builder.AddGraphQL().AddTypes()`. "Automatically registers" in the docs means the generator
   writes the method, not that it wires itself. Requires `HotChocolate.Types.Analyzers` referenced as an
   analyzer.
-- Aspire 13.4+ defaults to the PostgreSQL 18 image; volumes created on PG17 will not mount.
-- Nitro (schema registry, breaking-change detection, atomic rollout) is proprietary with a free cloud tier.
-  Local `nitro fusion compose` plus `IFusionConfigurationProvider` reading from S3 avoids the dependency at
-  the cost of those features. Verify the `nitro` CLI's licensing for CI use.
+- PostgreSQL 18 images store data in a major-version subdirectory, so the volume mounts at
+  `/var/lib/postgresql`, not `/var/lib/postgresql/data`. Mounting the old path makes the container start
+  and then fail its health check. Volumes created on PG17 will not mount.
+- The generated GraphQL registration method is named after each module's `[assembly: Module(...)]`
+  attribute, so ten modules need ten distinct names. Ten `Module("Types")` attributes collide.
 
 ## Change log
 
@@ -400,3 +388,7 @@ Notes carrying real consequences:
 | 2026-08-31 | Per-subgraph port pinning (5101-5110) dropped. Only the gateway is pinned, at 5100; every client query is federated through it, so `Requests/` holds one file rather than ten. |
 | 2026-08-31 | Corrected the generated registration method: `AddTypes()`, not `Add<Service>Types()`. The documented form did not compile against Hot Chocolate 16.6.1. |
 | 2026-08-31 | Folder convention reversed: top-level folders are lowercase (`src/`, `docs/`, `requests/`); directories inside `src/` keep Sentence case. Supersedes the Sentence-case rule recorded earlier the same day. |
+| 2026-08-31 | Collapsed to a **modular monolith**. Supersedes decisions 1, 2, 3, 5 and 6. Ten services became ten module assemblies under `src/Modules` behind one `src/Api` host; the Fusion gateway, `gateway.far` and schema composition are deleted. Boundaries are enforced by `internal` plus a NetArchTest rule in `tests/Architecture`. Stated goal is full-stack breadth, and ten deployables spent that budget on coordination. |
+| 2026-08-31 | Aspire removed. At one app and one database there is nothing to orchestrate; Compose runs Postgres. `ServiceDefaults` is kept minus service discovery. |
+| 2026-08-31 | No Dockerfile. `dotnet publish /t:PublishContainer` builds the image from the SDK, verified against `mcr.microsoft.com/dotnet/aspnet:10.0`. |
+| 2026-08-31 | Deployment shape reduced to 1 Fargate task, 1 RDS instance, 1 ALB, superseding 11 tasks and 10 Aurora clusters. App Runner evaluated and unavailable: closed to new customers. |
