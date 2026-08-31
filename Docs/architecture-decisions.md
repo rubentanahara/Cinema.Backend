@@ -140,23 +140,24 @@ ALB (ACM TLS, optional WAF)
 Three ALB listener rules, three target groups. A PSP webhook is an inbound machine callback, not a client
 query, so it does not pass through the GraphQL gateway.
 
-### Gateway composition, deferred
+### Gateway composition
 
 There is exactly **one** gateway: `Cinema.Gateway`, the Fusion gateway, local port **5100**. The ALB is a
 load balancer, not a gateway, and exists only in AWS. AWS API Gateway, YARP and Ocelot are rejected above.
 
-Schema composition is **not wired yet**. In `HotChocolate.Fusion.Aspire` 16.6.1 both Aspire composition entry
-points are obsolete in favour of Nitro-branded replacements — `AddGraphQLOrchestrator` → `AddNitroComposition`,
-`WithGraphQLSchemaComposition` → `WithNitroComposition` — and the assembly also exposes `WithNitroApiId` and
-`AddNitroPortalUrlsAsync`. Wiring it today would couple the inner loop to a proprietary product while the ten
-subgraphs expose one `serviceStatus` field each and no client consumes them.
+Composition is wired through the **local, no-cloud option**: `nitro fusion compose` produces
+`Src/Gateway/gateway.far`, which the gateway loads with `AddFileSystemConfiguration`. Nitro's hosted registry
+was the alternative and is not adopted; its breaking-change detection and atomic rollout are bought back in
+CI by running composition on every PR.
 
-The gateway project is built and in the solution; it is not in the AppHost run graph. Subgraphs already declare
-`.WithGraphQLHttpEndpoint()`, so composition is a one-line change once there is a schema worth composing.
+In `HotChocolate.Fusion.Aspire` 16.6.1 both Aspire composition entry points are Nitro-branded —
+`AddGraphQLOrchestrator` → `AddNitroComposition` on the builder, `WithGraphQLSchemaComposition` →
+`WithNitroComposition` on the gateway resource. The AppHost uses both, and the gateway is in the run graph,
+referencing all ten subgraphs.
 
-Decide at phase 0.2, when `catalog` has a real schema, between: local `nitro fusion compose` producing a
-`gateway.far` loaded via `AddFileSystemConfiguration` (no cloud, extra CLI), or Nitro's hosted registry
-(breaking-change detection and atomic rollout, proprietary, free tier).
+Changing a subgraph's types does not change the composed graph. `make schema` exports each subgraph's SDL to
+`Src/Services/<Service>/schema.graphql`; `gateway.far` is recomposed from those. A schema change that skips
+recomposition leaves the gateway serving the previous graph.
 
 ### Required edge hardening
 
@@ -172,9 +173,11 @@ Decide at phase 0.2, when `catalog` has a real schema, between: local `nitro fus
 
 - Folder names are **Sentence case**: `Src/`, `Docs/`, `Requests/`, `Src/Services/Catalog/`. Tooling
   directories keep their required names (`.husky`, `.config`, `artifacts`).
-- Services are pinned to fixed local ports 5101-5110 in `AppHost.cs` via
-  `.WithEndpoint("http", e => e.Port = N)`. Aspire otherwise assigns random ports on every run, which makes
-  checked-in `.http` files useless.
+- **Only the gateway has a pinned local port**, 5100, set in `AppHost.cs` via
+  `.WithEndpoint("http", e => e.Port = 5100)`. The ten subgraphs take random Aspire ports on every run. One
+  pinned public entry point is what keeps a checked-in `.http` file valid, and every client query goes
+  through the gateway anyway; per-subgraph pinning bought nothing. Reach a subgraph directly through the
+  Aspire dashboard.
 
 ## Domain model
 
@@ -376,9 +379,10 @@ Notes carrying real consequences:
 
 - OpenTelemetry **1.14.0**, the version Aspire 13.5's template pins, carries known moderate advisories
   (unbounded OTLP response bodies; patched in 1.15.2). Pinned to 1.18.0.
-- Hot Chocolate's `[QueryType]` source generator emits `Add<Service>Types()`; it must be called explicitly.
-  "Automatically registers" in the docs means the generator writes the method, not that it wires itself.
-  Requires `HotChocolate.Types.Analyzers` referenced as an analyzer.
+- Hot Chocolate's `[QueryType]` source generator emits a per-assembly `AddTypes()`; it must be called
+  explicitly, as `builder.AddGraphQL().AddTypes()`. "Automatically registers" in the docs means the generator
+  writes the method, not that it wires itself. Requires `HotChocolate.Types.Analyzers` referenced as an
+  analyzer.
 - Aspire 13.4+ defaults to the PostgreSQL 18 image; volumes created on PG17 will not mount.
 - Nitro (schema registry, breaking-change detection, atomic rollout) is proprietary with a free cloud tier.
   Local `nitro fusion compose` plus `IFusionConfigurationProvider` reading from S3 avoids the dependency at
@@ -391,3 +395,6 @@ Notes carrying real consequences:
 | 2026-08-24 | Initial decision log from the architecture session. Scope, market, service topology, seat-hold model, federation, saga, identity, client, infrastructure, delivery, and phases recorded. |
 | 2026-08-24 | Gateway composition deferred to phase 0.2: Fusion Aspire 16.6.1 routes local composition through Nitro-branded APIs, and there is no schema worth composing yet. Gateway project built but out of the run graph. |
 | 2026-08-24 | Edge and gateway section added: AWS API Gateway, YARP and Ocelot rejected with reasons; ALB three-route topology; query cost analysis and persisted operations recorded as required hardening. Sentence-case folder convention and fixed local ports 5101-5110 recorded. |
+| 2026-08-31 | Gateway composition is wired, no longer deferred: local `nitro fusion compose` → `Src/Gateway/gateway.far` → `AddFileSystemConfiguration`, gateway in the AppHost run graph. Nitro's hosted registry not adopted; CI composition covers breaking-change detection. |
+| 2026-08-31 | Per-subgraph port pinning (5101-5110) dropped. Only the gateway is pinned, at 5100; every client query is federated through it, so `Requests/` holds one file rather than ten. |
+| 2026-08-31 | Corrected the generated registration method: `AddTypes()`, not `Add<Service>Types()`. The documented form did not compile against Hot Chocolate 16.6.1. |
