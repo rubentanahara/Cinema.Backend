@@ -5,6 +5,7 @@ enforced boundary, composed by one host exposing a single GraphQL schema.
 
 The mobile client lives in [Cinema.Maui](https://github.com/rubentanahara/Cinema.Maui).
 Architecture decisions are recorded in [docs/architecture-decisions.md](docs/architecture-decisions.md).
+The current architecture is drawn in [docs/Diagrams/system-architecture.html](docs/Diagrams/system-architecture.html).
 
 ## Requirements
 

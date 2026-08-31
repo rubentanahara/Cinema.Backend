@@ -4,6 +4,7 @@ Interim record of decisions taken in the architecture session. Feeds the formal 
 one file per decision), the domain model document, and the per-phase PRDs.
 
 Repositories: `rubentanahara/Cinema.Backend` (modules, API, infra), `rubentanahara/Cinema.Maui` (mobile client).
+Current architecture, rendered from `docs/Diagrams/system-architecture.json`: [system-architecture.html](Diagrams/system-architecture.html).
 Design reference: `CinepolisUI/` — 39-screen critique of Cinépolis GO, 80 Critical / 87 Important findings.
 The app is a corrected redesign of that product, not a clone. Defect IDs (`S1`–`S7`, `B1`–`B8`) become
 acceptance criteria in the phase PRDs.

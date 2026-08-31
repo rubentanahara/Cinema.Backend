@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 artifacts/
 graphify-out/
+
+# archify visual-check evidence, regenerable
+docs/Diagrams/*.visual-check.*

@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Cinema.Backend \u2014 Modular Monolith",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/rubentanahara/Cinema.Backend",
+      "revision": "c76ea2f7bc964ab2f92a6af53023935e1e1b61b6"
+    },
+    "views": [
+      {
+        "id": "request-path",
+        "label": "Request path",
+        "focus": [
+          "maui",
+          "api",
+          "catalog",
+          "postgres"
+        ],
+        "note": "One process serves one GraphQL schema; catalog is the only module with a domain."
+      },
+      {
+        "id": "module-isolation",
+        "label": "Module isolation",
+        "focus": [
+          "catalog",
+          "modules",
+          "kernel",
+          "archtest"
+        ],
+        "note": "Each module is its own assembly, so internal is a compiler boundary."
+      },
+      {
+        "id": "shared-infrastructure",
+        "label": "Shared infrastructure",
+        "focus": [
+          "defaults",
+          "api",
+          "postgres"
+        ],
+        "note": "ServiceDefaults supplies OpenTelemetry, health checks and HTTP resilience."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "maui",
+      "type": "external",
+      "label": "Cinema.Maui",
+      "sublabel": "separate repository",
+      "tag": "not wired yet",
+      "pos": [
+        60,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "Cinema.Api",
+      "sublabel": "one GraphQL schema :5100",
+      "pos": [
+        300,
+        305
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/Api/Program.cs",
+          "label": "module registration"
+        }
+      ]
+    },
+    {
+      "id": "catalog",
+      "type": "backend",
+      "label": "Catalog module",
+      "sublabel": "Movie, queries, migration",
+      "pos": [
+        570,
+        288
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/Modules/Catalog/CatalogModule.cs",
+          "label": "AddCatalog"
+        }
+      ]
+    },
+    {
+      "id": "modules",
+      "type": "backend",
+      "label": "Nine modules",
+      "sublabel": "seating, pricing, ordering, \u2026",
+      "tag": "schema + health only",
+      "pos": [
+        570,
+        428
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "kernel",
+      "type": "backend",
+      "label": "SharedKernel",
+      "sublabel": "Entity, IDomainEvent",
+      "pos": [
+        570,
+        140
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "defaults",
+      "type": "backend",
+      "label": "ServiceDefaults",
+      "sublabel": "OTel, health, resilience",
+      "pos": [
+        300,
+        140
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/ServiceDefaults/Extensions.cs",
+          "label": "AddServiceDefaults"
+        }
+      ]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL 18.3",
+      "sublabel": "one database, ten schemas",
+      "tag": "Compose :5432",
+      "pos": [
+        880,
+        358
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "archtest",
+      "type": "security",
+      "label": "Architecture test",
+      "sublabel": "NetArchTest",
+      "pos": [
+        60,
+        440
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "sources": [
+        {
+          "path": "tests/Architecture/ModuleBoundaryTests.cs",
+          "label": "boundary rule"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Cinema.Api \u2014 one process",
+      "wraps": [
+        "api",
+        "catalog",
+        "modules",
+        "kernel",
+        "defaults"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "client-graphql",
+      "from": "maui",
+      "to": "api",
+      "label": "GraphQL over HTTP",
+      "variant": "dashed"
+    },
+    {
+      "id": "register-catalog",
+      "from": "api",
+      "to": "catalog",
+      "label": "AddCatalogTypes()",
+      "variant": "emphasis"
+    },
+    {
+      "id": "register-modules",
+      "from": "api",
+      "to": "modules",
+      "label": "AddSeating() \u00d79"
+    },
+    {
+      "id": "catalog-schema",
+      "from": "catalog",
+      "to": "postgres",
+      "label": "catalog schema"
+    },
+    {
+      "id": "modules-schemas",
+      "from": "modules",
+      "to": "postgres",
+      "label": "nine empty schemas"
+    },
+    {
+      "id": "defaults-wiring",
+      "from": "defaults",
+      "to": "api",
+      "label": "OTel, health, resilience",
+      "labelDy": 24
+    },
+    {
+      "id": "kernel-types",
+      "from": "kernel",
+      "to": "catalog",
+      "label": "Entity, IDomainEvent",
+      "labelDy": 24
+    },
+    {
+      "id": "boundary-rule",
+      "from": "archtest",
+      "to": "modules",
+      "label": "no cross-module reference",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Built",
+      "items": [
+        "Ten module assemblies, one deployable",
+        "Ten schemas, each with its own migrations history",
+        "/health: eleven independent entries"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "ADR ahead of the code",
+      "items": [
+        "Phase 0 says deploy once; no CDK exists",
+        "No CI, so the schema gate is manual",
+        "Auth, outbox, saga, subscription unwritten"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Open decision",
+      "items": [
+        "Cross-module transaction, deferred to phase 3"
+      ]
+    }
+  ]
+}
