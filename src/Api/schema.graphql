@@ -1,0 +1,70 @@
+schema {
+  query: Query
+}
+
+type Query {
+  catalogStatus: CatalogStatus!
+  seatingStatus: SeatingStatus!
+  pricingStatus: PricingStatus!
+  orderingStatus: OrderingStatus!
+  paymentsStatus: PaymentsStatus!
+  ticketingStatus: TicketingStatus!
+  loyaltyStatus: LoyaltyStatus!
+  concessionsStatus: ConcessionsStatus!
+  identityStatus: IdentityStatus!
+  notificationsStatus: NotificationsStatus!
+}
+
+type CatalogStatus {
+  name: String!
+  checkedAt: DateTime!
+}
+
+type ConcessionsStatus {
+  name: String!
+  checkedAt: DateTime!
+}
+
+type IdentityStatus {
+  name: String!
+  checkedAt: DateTime!
+}
+
+type LoyaltyStatus {
+  name: String!
+  checkedAt: DateTime!
+}
+
+type NotificationsStatus {
+  name: String!
+  checkedAt: DateTime!
+}
+
+type OrderingStatus {
+  name: String!
+  checkedAt: DateTime!
+}
+
+type PaymentsStatus {
+  name: String!
+  checkedAt: DateTime!
+}
+
+type PricingStatus {
+  name: String!
+  checkedAt: DateTime!
+}
+
+type SeatingStatus {
+  name: String!
+  checkedAt: DateTime!
+}
+
+type TicketingStatus {
+  name: String!
+  checkedAt: DateTime!
+}
+
+"The `DateTime` scalar type represents a date and time with time zone offset information."
+scalar DateTime
+  @specifiedBy(url: "https://scalars.graphql.org/chillicream/date-time.html")

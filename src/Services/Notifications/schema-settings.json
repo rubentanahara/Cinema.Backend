@@ -1,8 +1,0 @@
-{
-  "name": "notifications",
-  "transports": {
-    "http": {
-      "url": "http://notifications:8080/graphql"
-    }
-  }
-}

@@ -1,8 +1,0 @@
-{
-  "name": "catalog",
-  "transports": {
-    "http": {
-      "url": "http://catalog:8080/graphql"
-    }
-  }
-}

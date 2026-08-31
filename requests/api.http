@@ -1,0 +1,13 @@
+@host = http://localhost:5100
+
+### Every module through one endpoint
+POST {{host}}/graphql
+Content-Type: application/json
+
+{"query":"{ catalogStatus { name } seatingStatus { name } orderingStatus { name checkedAt } }"}
+
+### Readiness
+GET {{host}}/health
+
+### Liveness
+GET {{host}}/alive

@@ -1,10 +1,10 @@
 SOLUTION := Cinema.slnx
+API_PROJ := src/Api/Cinema.Api.csproj
 CONFIG   ?= Debug
-SERVICES := Catalog Seating Pricing Ordering Payments Ticketing Loyalty Concessions Identity Notifications
-GATEWAY  := http://localhost:5100
+API      := http://localhost:5100
 
 .DEFAULT_GOAL := build
-.PHONY: build restore clean up logs tools format test status health down schema
+.PHONY: build restore clean dev up logs down tools format test schema status health
 
 build:
 	dotnet build $(SOLUTION) -c $(CONFIG)
@@ -24,8 +24,11 @@ up:
 logs:
 	docker compose logs -f
 
-schema:
-	./Scripts/export-schemas.sh
+down:
+	docker compose down
+
+dev:
+	dotnet run --project $(API_PROJ)
 
 format:
 	dotnet format $(SOLUTION)
@@ -33,15 +36,15 @@ format:
 test:
 	dotnet test $(SOLUTION) -c $(CONFIG)
 
+schema:
+	dotnet run --project $(API_PROJ) -- schema export --output $(CURDIR)/src/Api/schema.graphql
+
 status:
-	@curl -s --max-time 5 -X POST $(GATEWAY)/graphql \
+	@curl -s --max-time 5 -X POST $(API)/graphql \
 		-H 'Content-Type: application/json' \
 		-d '{"query":"{ catalogStatus { name } seatingStatus { name } pricingStatus { name } orderingStatus { name } paymentsStatus { name } ticketingStatus { name } loyaltyStatus { name } concessionsStatus { name } identityStatus { name } notificationsStatus { name } }"}' \
-		|| echo "gateway unreachable"
+		|| echo "api unreachable"
 	@echo ""
 
 health:
-	@printf 'gateway %s\n' "$$(curl -s --max-time 3 $(GATEWAY)/health || echo unreachable)"
-
-down:
-	docker compose down
+	@printf 'api %s\n' "$$(curl -s --max-time 3 $(API)/health || echo unreachable)"

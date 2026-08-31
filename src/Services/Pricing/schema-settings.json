@@ -1,8 +1,0 @@
-{
-  "name": "pricing",
-  "transports": {
-    "http": {
-      "url": "http://pricing:8080/graphql"
-    }
-  }
-}
