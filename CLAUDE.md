@@ -25,7 +25,7 @@ make schema    # export the GraphQL schema to src/Api/schema.graphql
 make migrate   # apply migrations; MODULE=Catalog by default
 make migration MODULE=Catalog NAME=AddMovie
 make format    # dotnet format
-make status    # query every module's status field through one endpoint
+make status    # smoke query: { movies { title } }
 make health    # /health
 make down      # stop the compose stack
 make clean     # down, then delete artifacts/
@@ -57,6 +57,14 @@ One process on port 5100, set in `src/Api/Properties/launchSettings.json`.
 
 Only `catalog` has a domain. The other nine are empty assemblies holding a place in the
 solution; give a module a `DbContext` when it gets its first entity, not before.
+
+**Those nine contain no `.cs` files at all, deliberately.** An empty class library builds fine. Adding a
+marker or placeholder class fails the build twice over: StyleCop `SA1649` wants the file name to match
+the type, and Sonar `S2094` rejects empty classes.
+
+`src/Api/Program.cs` ends with a `public partial class Program` carrying a `protected` constructor. That
+exists so `WebApplicationFactory<Program>` can reach it from the test project; the constructor is there
+because Sonar `S1118` rejects a public class with only static members.
 
 A module's layout, once it has code:
 
@@ -90,6 +98,51 @@ Modules register `AddDbContextFactory<T>`, not a scoped `DbContext`, because res
 Each pins its own `MigrationsHistoryTable("__EFMigrationsHistory", "<schema>")` or ten modules fight over
 one table.
 
+## Endpoints
+
+| Endpoint | Returns |
+|---|---|
+| `POST /graphql` | the only data endpoint |
+| `GET /graphql` | 301 to the Nitro IDE |
+| `GET /health` | JSON: overall status plus one entry per module |
+| `GET /alive` | `Healthy` as plain text, liveness only |
+
+```json
+{ "status": "Healthy",
+  "modules": { "self":    { "status": "Healthy", "description": null },
+               "catalog": { "status": "Healthy", "description": null } } }
+```
+
+A module reports `Degraded` with `"3 pending migrations"` when it is behind. `/health` maps in **every**
+environment: mapping it only in Development would make the ALB health check 404 and cycle the Fargate
+task. Because it exposes module names and migration counts, keep it off the public listener and point
+the load balancer at `/alive`.
+
+## Database
+
+Compose runs one PostgreSQL 18.3 with database `cinema`, user and password both `cinema`, on 5432. The
+connection string lives under `ConnectionStrings:cinema` in `src/Api/appsettings.json`.
+
+The volume mounts at `/var/lib/postgresql`, **not** `/var/lib/postgresql/data`. PostgreSQL 18 images
+store data in a major-version subdirectory and refuse to start against the old path.
+
+One database, one schema per module, each with its own `__EFMigrationsHistory` inside that schema.
+
+## Adding a module
+
+`catalog` is the reference; copy its shape.
+
+1. `Properties/ModuleInfo.cs` with `[assembly: Module("<Name>Types")]`, distinct from every other module.
+2. `Domain/`, `Infrastructure/<Name>DbContext.cs`, `Graph/<Name>Queries.cs`.
+3. `<Name>Module.cs` exposing `Add<Name>(this IHostApplicationBuilder)`, registering
+   `AddDbContextFactory<T>` and `AddModuleCheck<T>(Schema)`.
+4. Add the package references catalog has: `HotChocolate.Data`, `HotChocolate.Data.EntityFramework`,
+   `Npgsql.EntityFrameworkCore.PostgreSQL`, `Microsoft.EntityFrameworkCore.Design`, plus project
+   references to `SharedKernel` and `ServiceDefaults`.
+5. Wire it in `src/Api/Program.cs`: `builder.Add<Name>()` and `.Add<Name>Types()`.
+6. `make migration MODULE=<Name> NAME=Initial<Name>` then `make migrate MODULE=<Name>`.
+7. `make schema` and commit the regenerated `src/Api/schema.graphql`.
+
 ## Build gates
 
 `TreatWarningsAsErrors` and `EnforceCodeStyleInBuild` are on, with StyleCop.Analyzers and
@@ -116,4 +169,4 @@ Read these before adding a module, a schema type, an event, or a saga step.
 
 @.claude/rules/module-boundaries.md
 @.claude/rules/graphql.md
-@.claude/rules/service-conventions.md
+@.claude/rules/conventions.md

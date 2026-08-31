@@ -8,9 +8,10 @@ Ten modules under `src/Modules`, one assembly each, one process, one database.
 - **No module project references another module project.** `tests/Architecture` fails if one does. When
   a genuine cross-module call appears, both sides reference a shared contracts assembly; the consumer
   never references the producer.
-- **A module owns its schema in the database.** `catalog.movies`, `ordering.orders`. One `DbContext`
-  per module, scoped to its own schema. No foreign key crosses a schema line, and no query joins across
-  one.
+- **A module owns its schema in the database.** `catalog."Movies"`, `ordering."Orders"`. One `DbContext`
+  per module with `HasDefaultSchema`, plus its own `MigrationsHistoryTable("__EFMigrationsHistory",
+  "<schema>")` or modules fight over one history table. No foreign key crosses a schema line, and no
+  query joins across one.
 - Cross-module data is **duplicated by event and stored as a snapshot**, never read across a boundary.
 - An order snapshots movie title, poster URL, cinema name, showtime instant and seat labels at
   placement. A receipt must render identically years after the title is delisted. This is a domain rule

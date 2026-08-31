@@ -1,13 +1,13 @@
-# Service conventions
+# Conventions
 
 ## C#
 
 - Every async method takes a `CancellationToken` and passes it down. No `async void` outside event handlers.
 - Return an empty collection, never null. Do not pass null either.
 - Exceptions over sentinel returns, with enough context in the message to act on. No empty catch.
-- A new module copies the shape of an existing one: a class library under `src/Modules`, `Types/`, a
-  `Properties/ModuleInfo.cs` declaring a distinct `Module("<Name>Types")`, and a registration call added
-  to `src/Api/Program.cs`.
+- A new module copies `catalog`. The full recipe is in `CLAUDE.md` under "Adding a module"; the shape is
+  `Domain/`, `Infrastructure/`, `Graph/`, a `<Name>Module.cs`, and a `Properties/ModuleInfo.cs` declaring
+  a distinct `Module("<Name>Types")`.
 
 ## Service defaults
 
@@ -15,15 +15,18 @@
 `src/Api/Program.cs` calls `builder.AddServiceDefaults()` and `app.MapDefaultEndpoints()` — do not hand-roll
 any of the three. Service discovery was dropped with Aspire; one process has nothing to discover.
 
-`MapDefaultEndpoints` maps `/health` and `/alive` **only in Development**. A health probe returning 404 in
-another environment is that, not an outage.
+`MapDefaultEndpoints` maps `/health` and `/alive` in **every** environment. It used to map them only in
+Development, which would have made the ALB health check 404 and cycle the Fargate task.
+
+Give every module-scoped `DbContext` a check with `AddModuleCheck<TContext>(Schema)`. It reports pending
+migrations, so `/health` degrades for a reason that is true rather than echoing a hardcoded string.
 
 ## Testing
 
 | Layer | Tool |
 |---|---|
 | Domain units | xUnit + Shouldly |
-| Per-service integration | Testcontainers, real Postgres |
+| Per-module integration | Testcontainers, real Postgres, through `WebApplicationFactory<Program>` |
 | Architecture | NetArchTest |
 | Saga E2E | `WebApplicationFactory` + Testcontainers, happy path and every compensation path |
 | Seat contention | k6 / NBomber |

@@ -1,12 +1,18 @@
 @host = http://localhost:5100
 
-### Every module through one endpoint
+### Movies through the catalog module
 POST {{host}}/graphql
 Content-Type: application/json
 
-{"query":"{ catalogStatus { name } seatingStatus { name } orderingStatus { name checkedAt } }"}
+{"query":"{ movies { title runtimeMinutes releasedOn } }"}
 
-### Readiness
+### Filtered and sorted
+POST {{host}}/graphql
+Content-Type: application/json
+
+{"query":"{ movies(where: { runtimeMinutes: { gt: 120 } }, order: [{ title: ASC }]) { title } }"}
+
+### Readiness, per-module status and pending migrations
 GET {{host}}/health
 
 ### Liveness

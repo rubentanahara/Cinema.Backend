@@ -20,18 +20,27 @@ referenced, and a decorated class registers nothing until its generated method i
 ```
 
 ```csharp
+// src/Modules/Catalog/Graph/CatalogQueries.cs
 [QueryType]
 public static partial class CatalogQueries
 {
-    public static CatalogStatus GetCatalogStatus() => new("catalog", DateTimeOffset.UtcNow);
+    [UseFiltering]
+    [UseSorting]
+    public static async Task<IReadOnlyList<Movie>> GetMoviesAsync(
+        QueryContext<Movie> query,
+        CatalogDbContext dbContext,
+        CancellationToken cancellationToken)
+        => await dbContext.Movies.With(query).ToListAsync(cancellationToken);
 }
 ```
 
 ```csharp
 // src/Api/Program.cs
 builder.AddGraphQL()
-    .AddCatalogTypes()
-    .AddSeatingTypes();
+    .RegisterDbContextFactory<CatalogDbContext>()
+    .AddFiltering()
+    .AddSorting()
+    .AddCatalogTypes();
 ```
 
 Every module needs a distinct `Module(...)` name. Two modules both declaring `Module("Types")` emit two
@@ -39,6 +48,30 @@ Every module needs a distinct `Module(...)` name. Two modules both declaring `Mo
 
 Do not reach for `AddGraphQLServer()` and hand-register types. That is the pre-16 shape and it bypasses
 the generator.
+
+## Reads and writes are not symmetric
+
+**Reads go resolver to `IQueryable`, with no repository.** `QueryContext<T>` lives in `GreenDonut.Data`,
+not `HotChocolate.Data`, and `.With(query)` composes filtering, sorting and projection onto the query.
+The catalog query above emits exactly this against Postgres:
+
+```sql
+SELECT m."Title" FROM catalog."Movies" AS m WHERE m."RuntimeMinutes" > @p ORDER BY m."Title"
+```
+
+One column, filter and sort both pushed into SQL. A repository returning `List<Movie>` would fetch every
+column and sort in memory, so the repository is not neutral ceremony on the read path, it is a
+performance bug.
+
+Never `[UseProjection]`: it is the pre-16 shape, and combining it with `QueryContext<T>` raises analyzer
+**HC0099**, which `TreatWarningsAsErrors` turns into a build failure. `AddFiltering()` and `AddSorting()`
+must be registered for `QueryContext<T>` to work at all.
+
+**Writes go resolver to a command handler to the aggregate.** Invariants, domain events and the outbox
+row belong together in one transaction, and that is where the ceremony earns its place.
+
+Resolvers run in parallel and `DbContext` is not thread-safe, so a module registers
+`AddDbContextFactory<T>` and the schema registers `RegisterDbContextFactory<T>`.
 
 ## Schema ownership
 

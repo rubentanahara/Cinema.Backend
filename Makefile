@@ -51,7 +51,7 @@ migration:
 status:
 	@curl -s --max-time 5 -X POST $(API)/graphql \
 		-H 'Content-Type: application/json' \
-		-d '{"query":"{ catalogStatus { name } seatingStatus { name } pricingStatus { name } orderingStatus { name } paymentsStatus { name } ticketingStatus { name } loyaltyStatus { name } concessionsStatus { name } identityStatus { name } notificationsStatus { name } }"}' \
+		-d '{"query":"{ movies { title } }"}' \
 		|| echo "api unreachable"
 	@echo ""
 
