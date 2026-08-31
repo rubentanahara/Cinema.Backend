@@ -7,7 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
     <ProjectReference Include="../../SharedKernel/Cinema.SharedKernel.csproj" />
+    <ProjectReference Include="../../ServiceDefaults/Cinema.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

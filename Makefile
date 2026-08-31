@@ -1,6 +1,7 @@
 SOLUTION := Cinema.slnx
 API_PROJ := src/Api/Cinema.Api.csproj
 CONFIG   ?= Debug
+MODULES  := Catalog Seating Pricing Ordering Payments Ticketing Loyalty Concessions Identity Notifications
 MODULE   ?= Catalog
 ARCH     := $(shell uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')
 API      := http://localhost:5100
@@ -46,8 +47,12 @@ schema:
 	dotnet run --project $(API_PROJ) -- schema export --output $(CURDIR)/src/Api/schema.graphql
 
 migrate:
-	dotnet ef database update \
-		--project src/Modules/$(MODULE)/Cinema.$(MODULE).csproj --startup-project $(API_PROJ)
+	@for m in $(MODULES); do \
+		printf '%-14s ' "$$m"; \
+		dotnet ef database update --context $${m}DbContext \
+			--project src/Modules/$$m/Cinema.$$m.csproj --startup-project $(API_PROJ) \
+			2>&1 | tail -1; \
+	done
 
 seed:
 	@docker compose exec -T postgres psql -U cinema -d cinema -v ON_ERROR_STOP=1 -c "\
@@ -60,6 +65,7 @@ seed:
 
 migration:
 	dotnet ef migrations add $(NAME) --output-dir Infrastructure/Migrations \
+		--context $(MODULE)DbContext \
 		--project src/Modules/$(MODULE)/Cinema.$(MODULE).csproj --startup-project $(API_PROJ)
 
 status:

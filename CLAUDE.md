@@ -23,7 +23,7 @@ make image     # publish cinema-api:latest via the SDK, no Dockerfile
 make           # build the whole solution
 make test      # unit and architecture tests
 make schema    # export the GraphQL schema to src/Api/schema.graphql
-make migrate   # apply migrations; MODULE=Catalog by default
+make migrate   # apply migrations for all ten modules in order
 make migration MODULE=Catalog NAME=AddMovie
 make seed      # three sample movies, idempotent
 make format    # dotnet format
@@ -106,12 +106,13 @@ requests/api.http    query and health probes
 
 One process on port 5100, set in `src/Api/Properties/launchSettings.json`.
 
-Only `catalog` has a domain. The other nine are empty assemblies holding a place in the
-solution; give a module a `DbContext` when it gets its first entity, not before.
+All ten modules have a `DbContext`, a schema, a migration and a health check. Only `catalog` has a
+domain and a GraphQL surface; the other nine own an empty schema waiting for their first entity.
 
-**Those nine contain no `.cs` files at all, deliberately.** An empty class library builds fine. Adding a
-marker or placeholder class fails the build twice over: StyleCop `SA1649` wants the file name to match
-the type, and Sonar `S2094` rejects empty classes.
+Each module's initial migration is a single `EnsureSchema`, which is idempotent, so re-running
+`make migrate` over an existing database is safe. Their `Down` is deliberately empty with an `S1186`
+comment: the schema holds that module's `__EFMigrationsHistory`, so dropping it would erase the record
+of the rollback itself.
 
 `src/Api/Program.cs` ends with a `public partial class Program` carrying a `protected` constructor. That
 exists so `WebApplicationFactory<Program>` can reach it from the test project; the constructor is there
@@ -166,10 +167,10 @@ The container listens on 8080 and Compose publishes it as 5100, so the port is 5
                "catalog": { "status": "Healthy", "description": null } } }
 ```
 
-Today that is two entries, not eleven: `self` from `AddDefaultHealthChecks()` in `ServiceDefaults`, and
-`catalog` from `AddModuleCheck<CatalogDbContext>(Schema)` in `CatalogModule`. **A module gets a health
-check when it gets a `DbContext`, not before.** The nine empty modules have nothing to probe, and a
-check that always returns healthy is the same theatre as the `*Status` queries we deleted.
+Eleven entries: `self` from `AddDefaultHealthChecks()` in `ServiceDefaults`, plus one per module from
+`AddModuleCheck<TContext>(Schema)` in each `<Name>Module.cs`. They are independent, not ten copies of one
+probe: clearing `seating.__EFMigrationsHistory` degrades `seating` alone and leaves the other ten
+healthy.
 
 A module behind on migrations reports `Degraded`:
 
@@ -203,7 +204,8 @@ env var uses `__` because that is how .NET maps environment variables onto confi
 The volume mounts at `/var/lib/postgresql`, **not** `/var/lib/postgresql/data`. PostgreSQL 18 images
 store data in a major-version subdirectory and refuse to start against the old path.
 
-One database, one schema per module, each with its own `__EFMigrationsHistory` inside that schema.
+One database, ten schemas, each with its own `__EFMigrationsHistory` inside that schema. Verified: eleven
+namespaces in `pg_namespace` (ten modules plus `public`), and ten history tables one per schema.
 
 ## Adding a module
 
@@ -217,8 +219,16 @@ One database, one schema per module, each with its own `__EFMigrationsHistory` i
    `Npgsql.EntityFrameworkCore.PostgreSQL`, `Microsoft.EntityFrameworkCore.Design`, plus project
    references to `SharedKernel` and `ServiceDefaults`.
 5. Wire it in `src/Api/Program.cs`: `builder.Add<Name>()` and `.Add<Name>Types()`.
-6. `make migration MODULE=<Name> NAME=Initial<Name>` then `make migrate MODULE=<Name>`.
+6. Add it to `MODULES` in the Makefile, then `make migration MODULE=<Name> NAME=Initial<Name>` and
+   `make migrate`.
 7. `make schema` and commit the regenerated `src/Api/schema.graphql`.
+
+With ten `DbContext`s in the solution, every `dotnet ef` command needs `--context <Name>DbContext` or it
+fails with "More than one DbContext was found". The Makefile targets pass it for you.
+
+A `DbContext` with no entities generates a migration with empty `Up` and `Down`, which fails the build on
+Sonar `S1186` and would not create the schema either. Replace the `Up` body with
+`migrationBuilder.EnsureSchema(name: "<schema>")`.
 
 ## Build gates
 

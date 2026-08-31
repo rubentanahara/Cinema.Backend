@@ -13,6 +13,15 @@
     <PackageReference Include="HotChocolate.Data.EntityFramework" />
     <ProjectReference Include="../ServiceDefaults/Cinema.ServiceDefaults.csproj" />
     <ProjectReference Include="../Modules/Catalog/Cinema.Catalog.csproj" />
+    <ProjectReference Include="../Modules/Concessions/Cinema.Concessions.csproj" />
+    <ProjectReference Include="../Modules/Identity/Cinema.Identity.csproj" />
+    <ProjectReference Include="../Modules/Loyalty/Cinema.Loyalty.csproj" />
+    <ProjectReference Include="../Modules/Notifications/Cinema.Notifications.csproj" />
+    <ProjectReference Include="../Modules/Ordering/Cinema.Ordering.csproj" />
+    <ProjectReference Include="../Modules/Payments/Cinema.Payments.csproj" />
+    <ProjectReference Include="../Modules/Pricing/Cinema.Pricing.csproj" />
+    <ProjectReference Include="../Modules/Seating/Cinema.Seating.csproj" />
+    <ProjectReference Include="../Modules/Ticketing/Cinema.Ticketing.csproj" />
   </ItemGroup>
 
 </Project>

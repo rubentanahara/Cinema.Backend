@@ -61,7 +61,8 @@ tests/
   Catalog/          integration tests against a real Postgres container
 ```
 
-Only `catalog` has a domain so far. The other nine are empty assemblies holding their place.
+Every module owns a schema, a migration and a health check. Only `catalog` has a domain and a GraphQL
+surface so far; the other nine hold an empty schema ready for their first entity.
 
 One process, one database, one schema per module. A module is its own assembly, so `internal` is a
 real boundary: `Cinema.Ordering` cannot see `Cinema.Catalog`'s internals because the compiler will not
