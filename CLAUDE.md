@@ -22,6 +22,8 @@ make dev       # run the API on http://localhost:5100
 make           # build the whole solution
 make test      # unit and architecture tests
 make schema    # export the GraphQL schema to src/Api/schema.graphql
+make migrate   # apply migrations; MODULE=Catalog by default
+make migration MODULE=Catalog NAME=AddMovie
 make format    # dotnet format
 make status    # query every module's status field through one endpoint
 make health    # /health
@@ -43,14 +45,28 @@ case.
 
 ```
 src/Api              host: GraphQL endpoint, health checks, module registration
-src/ServiceDefaults  OpenTelemetry, health checks, HTTP resilience
+src/ServiceDefaults  OpenTelemetry, health checks, HTTP resilience, ModuleHealthCheck<T>
 src/SharedKernel     Entity, IDomainEvent
 src/Modules/*        the ten modules, one assembly each
 tests/Architecture   module boundary rules
-requests/api.http    status query and health probes
+tests/Catalog        integration tests against a real Postgres container
+requests/api.http    query and health probes
 ```
 
 One process on port 5100, set in `src/Api/Properties/launchSettings.json`.
+
+Only `catalog` has a domain. The other nine are empty assemblies holding a place in the
+solution; give a module a `DbContext` when it gets its first entity, not before.
+
+A module's layout, once it has code:
+
+```
+src/Modules/Catalog/
+  CatalogModule.cs        public: AddCatalog registers the context and its health check
+  Domain/                 entities on the GraphQL surface are public, everything else internal
+  Infrastructure/         CatalogDbContext, Migrations/
+  Graph/                  CatalogQueries
+```
 
 ## Modules
 
@@ -63,8 +79,16 @@ boundary with no test is a folder name. If you add a legitimate cross-module dep
 through a contract that both sides reference, never a direct project reference.
 
 Hot Chocolate's source generator names its registration method after the module's
-`[assembly: Module("<Name>Types")]` attribute, so `src/Api/Program.cs` chains `AddCatalogTypes()`
-through `AddNotificationsTypes()`. Two modules declaring the same `Module(...)` name will collide.
+`[assembly: Module("<Name>Types")]` attribute, so `src/Api/Program.cs` calls `AddCatalogTypes()`. Two
+modules declaring the same `Module(...)` name will collide.
+
+Reads use `QueryContext<T>` from `GreenDonut.Data` with `.With(query)`, never `[UseProjection]`: mixing
+them raises analyzer HC0099, which `TreatWarningsAsErrors` turns into a build failure. `AddFiltering()`
+and `AddSorting()` must be registered for `QueryContext<T>` to work.
+
+Modules register `AddDbContextFactory<T>`, not a scoped `DbContext`, because resolvers run in parallel.
+Each pins its own `MigrationsHistoryTable("__EFMigrationsHistory", "<schema>")` or ten modules fight over
+one table.
 
 ## Build gates
 

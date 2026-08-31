@@ -189,7 +189,8 @@ explicitly. No endpoint auto-discovery: the host stays a readable table of conte
 | Concern | Where |
 |---|---|
 | **Query cost and depth limits** | Hot Chocolate cost analysis. Without it a single deeply nested query is a denial of service. This is GraphQL's equivalent of usage plans and is mandatory before any public exposure |
-| **Persisted operation allowlist** | gateway — clients send a document hash, not a document. Removes arbitrary-query attacks and cuts request size |
+| **Persisted operation allowlist** | the API. Clients send a document hash, not a document. Removes arbitrary-query attacks and cuts request size |
+| **Detailed health is not public** | `/health` reports per-module status and pending migration counts. Point the ALB at `/alive` and keep `/health` off the public listener or behind auth |
 | Rate limiting | ASP.NET rate limiting in the API, or AWS WAF on the ALB |
 | TLS, WAF | ALB + ACM |
 | Authentication | JWT validated by the API on every request |
@@ -197,7 +198,7 @@ explicitly. No endpoint auto-discovery: the host stays a readable table of conte
 ## Conventions
 
 - **Top-level folders are lowercase**: `src/`, `docs/`, `requests/`. Directories inside `src/` keep
-  Sentence case: `src/Services/Catalog/`, `src/ServiceDefaults/`. Tooling directories keep their required
+  Sentence case: `src/Modules/Catalog/`, `src/ServiceDefaults/`. Tooling directories keep their required
   names (`.husky`, `.config`, `artifacts`).
 - **The API runs on local port 5100**, set in `src/Api/Properties/launchSettings.json`, so the checked-in
   `requests/api.http` stays valid across runs.
@@ -449,3 +450,4 @@ Notes carrying real consequences:
 | 2026-08-31 | Module communication order recorded: snapshot by event first, integration event second, synchronous contract call last. Only the third changes shape on extraction. |
 | 2026-08-31 | Hot Chocolate 16 data-access constraints recorded: `QueryContext<T>` replaces `[UseProjection]` and mixing them fails the build via HC0099; `DbContextFactory` over scoped `DbContext`; per-module migrations history table. |
 | 2026-08-31 | Infrastructure and delivery restated for one deployable: ALB fronts a single Fargate task, no ECS Service Connect, one RDS instance, one CI workflow publishing via the SDK container target. `make schema` diff replaces composition as the PR gate. |
+| 2026-08-31 | Catalog built as the reference module: `Movie`, `catalog` schema, migration, and a `QueryContext<T>` read path verified emitting column-projected, filter-pushed SQL. The other nine modules are empty assemblies; a module gets a `DbContext` with its first entity. `/health` now maps in every environment and reports per-module migration status. Unused package declarations removed, including the two SQLite packages this log rules out. |

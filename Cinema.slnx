@@ -13,6 +13,7 @@
   </Folder>
   <Project Path="src/Api/Cinema.Api.csproj" />
   <Project Path="tests/Architecture/Cinema.Architecture.Tests.csproj" />
+  <Project Path="tests/Catalog/Cinema.Catalog.Tests.csproj" />
   <Project Path="src/SharedKernel/Cinema.SharedKernel.csproj" />
   <Project Path="src/ServiceDefaults/Cinema.ServiceDefaults.csproj" />
 </Solution>

@@ -1,10 +1,11 @@
 SOLUTION := Cinema.slnx
 API_PROJ := src/Api/Cinema.Api.csproj
 CONFIG   ?= Debug
+MODULE   ?= Catalog
 API      := http://localhost:5100
 
 .DEFAULT_GOAL := build
-.PHONY: build restore clean dev up logs down tools format test schema status health
+.PHONY: build restore clean dev up logs down tools format test schema migrate migration status health
 
 build:
 	dotnet build $(SOLUTION) -c $(CONFIG)
@@ -38,6 +39,14 @@ test:
 
 schema:
 	dotnet run --project $(API_PROJ) -- schema export --output $(CURDIR)/src/Api/schema.graphql
+
+migrate:
+	dotnet ef database update \
+		--project src/Modules/$(MODULE)/Cinema.$(MODULE).csproj --startup-project $(API_PROJ)
+
+migration:
+	dotnet ef migrations add $(NAME) --output-dir Infrastructure/Migrations \
+		--project src/Modules/$(MODULE)/Cinema.$(MODULE).csproj --startup-project $(API_PROJ)
 
 status:
 	@curl -s --max-time 5 -X POST $(API)/graphql \

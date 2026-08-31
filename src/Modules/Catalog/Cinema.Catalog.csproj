@@ -12,7 +12,12 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="HotChocolate.Data" />
+    <PackageReference Include="HotChocolate.Data.EntityFramework" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
     <ProjectReference Include="../../SharedKernel/Cinema.SharedKernel.csproj" />
+    <ProjectReference Include="../../ServiceDefaults/Cinema.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

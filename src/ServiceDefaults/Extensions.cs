@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
+
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
@@ -65,17 +68,42 @@ public static class Extensions
 
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
-        if (app.Environment.IsDevelopment())
+        app.MapHealthChecks(HealthEndpointPath, new HealthCheckOptions
         {
-            app.MapHealthChecks(HealthEndpointPath);
+            ResponseWriter = WriteHealthReportAsync,
+        });
 
-            app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
-            {
-                Predicate = check => check.Tags.Contains("live"),
-            });
-        }
+        app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("live"),
+        });
 
         return app;
+    }
+
+    public static IHealthChecksBuilder AddModuleCheck<TContext>(
+        this IHealthChecksBuilder builder,
+        string moduleName)
+        where TContext : DbContext
+        => builder.AddCheck<ModuleHealthCheck<TContext>>(moduleName, tags: ["module"]);
+
+    private static Task WriteHealthReportAsync(HttpContext context, HealthReport report)
+    {
+        context.Response.ContentType = "application/json";
+
+        return context.Response.WriteAsJsonAsync(
+            new
+            {
+                status = report.Status.ToString(),
+                modules = report.Entries.ToDictionary(
+                    entry => entry.Key,
+                    entry => new
+                    {
+                        status = entry.Value.Status.ToString(),
+                        description = entry.Value.Description,
+                    }),
+            },
+            context.RequestAborted);
     }
 
     private static void AddOpenTelemetryExporters<TBuilder>(this TBuilder builder)

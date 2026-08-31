@@ -1,20 +1,17 @@
+using Cinema.Catalog;
+using Cinema.Catalog.Infrastructure;
 using Cinema.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+builder.AddCatalog();
 
 builder.AddGraphQL()
-    .AddCatalogTypes()
-    .AddSeatingTypes()
-    .AddPricingTypes()
-    .AddOrderingTypes()
-    .AddPaymentsTypes()
-    .AddTicketingTypes()
-    .AddLoyaltyTypes()
-    .AddConcessionsTypes()
-    .AddIdentityTypes()
-    .AddNotificationsTypes();
+    .RegisterDbContextFactory<CatalogDbContext>()
+    .AddFiltering()
+    .AddSorting()
+    .AddCatalogTypes();
 
 var app = builder.Build();
 
@@ -22,3 +19,10 @@ app.MapDefaultEndpoints();
 app.MapGraphQL();
 
 await app.RunWithGraphQLCommandsAsync(args);
+
+public partial class Program
+{
+    protected Program()
+    {
+    }
+}

@@ -22,6 +22,7 @@ make dev          # run the API on http://localhost:5100
 make              # build the whole solution
 make test         # unit and architecture tests
 make schema       # export the GraphQL schema to src/Api/schema.graphql
+make migrate      # apply migrations for MODULE (default Catalog)
 make status       # query every module's status field through one endpoint
 make health       # /health
 make down         # stop the compose stack
@@ -50,7 +51,10 @@ src/
     Notifications/  outbound mail and push
 tests/
   Architecture/     module boundary rules
+  Catalog/          integration tests against a real Postgres container
 ```
+
+Only `catalog` has a domain so far. The other nine are empty assemblies holding their place.
 
 One process, one database, one schema per module. A module is its own assembly, so `internal` is a
 real boundary: `Cinema.Ordering` cannot see `Cinema.Catalog`'s internals because the compiler will not
