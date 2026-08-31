@@ -3,7 +3,7 @@
 Interim record of decisions taken in the architecture session. Feeds the formal ADRs (MADR,
 one file per decision), the domain model document, and the per-phase PRDs.
 
-Repositories: `rubentanahara/Cinema.Backend` (services, gateway, infra), `rubentanahara/Cinema.Maui` (mobile client).
+Repositories: `rubentanahara/Cinema.Backend` (modules, API, infra), `rubentanahara/Cinema.Maui` (mobile client).
 Design reference: `CinepolisUI/` — 39-screen critique of Cinépolis GO, 80 Critical / 87 Important findings.
 The app is a corrected redesign of that product, not a clone. Defect IDs (`S1`–`S7`, `B1`–`B8`) become
 acceptance criteria in the phase PRDs.
@@ -30,7 +30,7 @@ Single market: **United States**. USD, en-US, 6 timezones.
 | 1 | **Modular monolith**, not microservices | one deployable unit, module boundaries enforced by the compiler and an architecture test. The project's goal is full-stack breadth; ten services spend that budget on coordination instead |
 | 2 | **10 modules**, one assembly each | granularity by transaction boundary and change cadence, not by counting nouns. Same boundaries microservices would have drawn, enforced by `internal` instead of a network hop |
 | 3 | **One database, one schema per module** | `catalog.movies`, `ordering.orders`. No foreign key or join crosses a schema line, so a module stays extractable |
-| 4 | **GraphQL at the client edge, REST between services** | GraphQL is an edge technology; service-to-service GraphQL couples every service to the gateway's type system |
+| 4 | **GraphQL for callers we control, REST for callers we do not** | one schema for the MAUI client. REST only where the caller has its own fixed contract (PSP webhook, door scanner) or the payload is binary. Nothing internal is HTTP: modules call each other in-process |
 | 5 | **One GraphQL schema**, no federation | one process has nothing to federate. `src/Api/schema.graphql` is checked in, so a breaking change is a git diff rather than a composition step |
 | 6 | **Transaction first, saga only for payments** | committing a hold, writing an order and issuing a ticket is one database transaction. The PSP is genuinely remote, so that step alone keeps explicit compensation |
 | 7 | **Transactional outbox → EventBridge → SQS per consumer** + DLQ | `PaymentCaptured` must issue tickets, award points, and email a receipt even if the process dies |
@@ -62,11 +62,26 @@ A back-office service writing into nine databases is a distributed monolith.
 **Favorites is not a context** — it is preferences in `identity`. **Search is not a context** — it is a read
 model over catalog data.
 
-### Cross-service data
+### Cross-module data
 
 Duplicated by event, never fetched at read time. An order snapshots movie title, poster URL, cinema name,
 showtime instant and seat labels at placement. Receipts must render identically years later, after a title
 is delisted. `ordering` and `catalog` disagreeing briefly is correct behaviour.
+
+Communication between modules, in order of preference:
+
+1. **None.** The consumer already holds a snapshot, kept current by event.
+2. **Integration event**, in-process, published through the outbox. The publisher does not know its
+   consumers. Event types live in `Cinema.<Module>.Contracts`.
+3. **A synchronous call through a contracts assembly**, only when the answer must be computed now rather
+   than read from a copy: a price quote, a seat availability check.
+
+Never a second module's `DbContext`, never a cross-schema join, never a project reference to another
+module's implementation. The first two are invisible to the architecture test, which is exactly why they
+are the ones requiring discipline.
+
+Options 1 and 2 already work across a network. Only option 3 changes shape when a module is extracted,
+and swapping its implementation for an HTTP client is the whole extraction.
 
 ## Seat holds
 
@@ -114,8 +129,10 @@ a backplane, which is the point at which the seat map becomes the reason to extr
 - **Guest checkout supported.** `Order.UserId` is nullable with a required contact email; tickets are
   delivered by QR link; a claim path attaches the purchase to an account created later.
 - Machine identities (door scanner, back-office) use `client_credentials` with scopes.
-- Internal service-to-service: private subnets and security groups are the boundary. No mTLS, no service mesh.
-- Account deletion is a saga across all 10 services and must wipe the on-device store.
+- There is no internal service-to-service traffic to secure. The single task sits in a private subnet and
+  the ALB is the only way in.
+- Account deletion spans all 10 modules and must wipe the on-device store. Most of it is one transaction;
+  the external steps (Cognito, mail provider) keep compensation.
 
 ## Edge and gateway
 
@@ -142,12 +159,30 @@ query, so it does not pass through the GraphQL gateway.
 
 ### API surface
 
-One deployable unit, `Cinema.Api`, local port **5100**, serving `/graphql`, `/health` and `/alive`. The
-ALB is a load balancer, not a gateway, and exists only in AWS. AWS API Gateway, YARP and Ocelot remain
-rejected above. There is nothing left to route between.
+One deployable unit, `Cinema.Api`, local port **5100**. The ALB is a load balancer, not a gateway, and
+exists only in AWS. AWS API Gateway, YARP and Ocelot remain rejected above. There is nothing left to
+route between.
 
 `src/Api/schema.graphql` is exported by `make schema` and checked in. Reviewing its diff is the
 breaking-change gate that schema composition used to provide.
+
+| Module | GraphQL | REST |
+|---|---|---|
+| catalog, pricing, concessions | query | — |
+| seating | query + seat-map subscription | — |
+| ordering, loyalty, identity | query + mutation | — |
+| payments | query + mutation | `POST /webhooks/psp` |
+| ticketing | query + mutation | `POST /redemptions`, QR image |
+| notifications | — | — |
+
+REST appears exactly twice, both times because the caller is not ours: a PSP posting a signed webhook,
+and door-scanner hardware holding `client_credentials`. Binary payloads are the third case, since a
+GraphQL field cannot carry a QR image or a ticket PDF; those go to a plain endpoint or an S3 URL.
+
+`notifications` has no public surface at all. It only reacts to events, and that is not a gap.
+
+A module needing routes exposes `MapX(IEndpointRouteBuilder)` beside its `AddX`, and the host calls it
+explicitly. No endpoint auto-discovery: the host stays a readable table of contents.
 
 ### Required edge hardening
 
@@ -155,7 +190,7 @@ breaking-change gate that schema composition used to provide.
 |---|---|
 | **Query cost and depth limits** | Hot Chocolate cost analysis. Without it a single deeply nested query is a denial of service. This is GraphQL's equivalent of usage plans and is mandatory before any public exposure |
 | **Persisted operation allowlist** | gateway — clients send a document hash, not a document. Removes arbitrary-query attacks and cuts request size |
-| Rate limiting | ASP.NET rate limiting in the gateway, or AWS WAF on the ALB |
+| Rate limiting | ASP.NET rate limiting in the API, or AWS WAF on the ALB |
 | TLS, WAF | ALB + ACM |
 | Authentication | JWT validated by the API on every request |
 
@@ -254,15 +289,15 @@ gateway, which loses compile-time schema safety.
   Ephemeral environments enforce IaC discipline: drift and hand-clicked fixes surface the same week.
 - **Persistent cloud floor ~$1/month** — Cognito (free at this scale), ECR, S3, SSM Parameter Store
   (free; Secrets Manager is $0.40/secret/month), CDK bootstrap, GitHub OIDC role.
-- **Deployed stack ~$0.51/hour** — 11 Fargate tasks, 10 Aurora clusters, ALB, VPC endpoints.
+- **Deployed stack** — 1 Fargate task, 1 RDS instance, ALB, VPC endpoints. The ALB is the floor; compute
+  and storage round to noise at this size.
 - **No NAT Gateway.** VPC endpoints cover ECR/Logs/Secrets; the PSP is simulated in-cluster and posters are
   pre-seeded to S3, so nothing needs egress. Saves ~$33/month. A `t4g.nano` NAT instance covers any future need.
-- ALB is public and fronts **only the gateway**. Services sit in private subnets and find each other through
-  **ECS Service Connect**.
-- Two AZs (ALB requires it), one NAT-free path, no Aurora read replicas. Production would add HA; paying for
-  HA that cannot be exercised is waste.
-- Aurora scale-to-zero pauses automatically when ECS tasks stop, so one schedule controls both. Hot-path
-  clusters (`catalog`, `seating`, `pricing`) use min 0.5 ACU to avoid the ~15s resume.
+- ALB is public and fronts the single task, which sits in a private subnet. No ECS Service Connect: there
+  is nothing to connect.
+- Two AZs (ALB requires it), one NAT-free path, no read replicas. Production would add HA; paying for HA
+  that cannot be exercised is waste.
+- The instance and the task stop together on one schedule, since a demo stack has no reason to idle.
 
 ### Local versus deployed
 
@@ -281,14 +316,14 @@ Connection-string-per-environment keeps module code byte-identical across both.
 
 ### CI/CD
 
-- GitHub Actions, **path-filtered workflow per service**: build → test → docker build → push to ECR tagged
-  with the **git SHA** → deploy that service. No `latest`.
-- **Schema composition runs on every PR and failure blocks the merge.** A service cannot ship a change that
-  breaks a consumer. This is the payoff for choosing federation.
-- **Migrations are a separate pipeline step**, run as a one-off task before the service deploys. Never on
-  application startup — replicas race.
-- **Expand/contract for every schema change.** Old and new versions run simultaneously by definition when
-  services deploy independently.
+- GitHub Actions, one workflow: build → test → `dotnet publish /t:PublishContainer` → push to ECR tagged
+  with the **git SHA** → deploy. No `latest`, no Dockerfile.
+- **`make schema` runs on every PR and an uncommitted diff fails the build.** A schema change that the
+  author did not notice cannot merge. This replaces composition as the breaking-change gate.
+- **Migrations are a separate pipeline step**, run as a one-off task before the API deploys. Never on
+  application startup, because replicas race and a failed migration should not take the app down with it.
+- **Expand/contract for every schema change.** The deployed API and a released mobile client are always
+  two versions apart, so the old shape has to keep working.
 
 ### Testing
 
@@ -376,6 +411,24 @@ Notes carrying real consequences:
   and then fail its health check. Volumes created on PG17 will not mount.
 - The generated GraphQL registration method is named after each module's `[assembly: Module(...)]`
   attribute, so ten modules need ten distinct names. Ten `Module("Types")` attributes collide.
+- Hot Chocolate 16 replaces `[UseProjection]` with `QueryContext<T>` and `.With()`. Combining the two
+  raises analyzer **HC0099**, which `TreatWarningsAsErrors` turns into a build failure. `AddFiltering()`
+  and `AddSorting()` must be registered for `QueryContext<T>` to work at all.
+- Resolvers run in parallel and `DbContext` is not thread-safe, so a module registers
+  `AddDbContextFactory<T>` and the schema registers `RegisterDbContextFactory<T>`. A scoped `DbContext`
+  is wrong here, which in turn rules out `AddDbContextCheck<T>` and makes a hand-written health check the
+  simpler path.
+- Ten modules on one database share `__EFMigrationsHistory` and will fight over it unless each pins its
+  own: `MigrationsHistoryTable("__EFMigrationsHistory", "<schema>")`.
+
+## Open decisions
+
+- **Cross-module transactions.** A mutation writing across two modules atomically has two `DbContext`
+  instances over one database. Likely answer: a request-scoped `NpgsqlConnection` shared by every module
+  context, with one transaction committed by a unit of work at the end of the mutation. Deferred until
+  `seating` and `ordering` both write, because inventing a cross-module write to exercise it would settle
+  the question against a fake case. If two modules constantly need one transaction, that is evidence they
+  are one module, not evidence the pattern is wrong.
 
 ## Change log
 
@@ -392,3 +445,7 @@ Notes carrying real consequences:
 | 2026-08-31 | Aspire removed. At one app and one database there is nothing to orchestrate; Compose runs Postgres. `ServiceDefaults` is kept minus service discovery. |
 | 2026-08-31 | No Dockerfile. `dotnet publish /t:PublishContainer` builds the image from the SDK, verified against `mcr.microsoft.com/dotnet/aspnet:10.0`. |
 | 2026-08-31 | Deployment shape reduced to 1 Fargate task, 1 RDS instance, 1 ALB, superseding 11 tasks and 10 Aurora clusters. App Runner evaluated and unavailable: closed to new customers. |
+| 2026-08-31 | Decision 4 restated: REST is for callers we do not control, not for service-to-service. Nothing internal is HTTP now that modules call each other in-process. Per-module GraphQL and REST surface recorded; `notifications` has none. |
+| 2026-08-31 | Module communication order recorded: snapshot by event first, integration event second, synchronous contract call last. Only the third changes shape on extraction. |
+| 2026-08-31 | Hot Chocolate 16 data-access constraints recorded: `QueryContext<T>` replaces `[UseProjection]` and mixing them fails the build via HC0099; `DbContextFactory` over scoped `DbContext`; per-module migrations history table. |
+| 2026-08-31 | Infrastructure and delivery restated for one deployable: ALB fronts a single Fargate task, no ECS Service Connect, one RDS instance, one CI workflow publishing via the SDK container target. `make schema` diff replaces composition as the PR gate. |
